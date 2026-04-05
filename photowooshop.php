@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/gaborknippl/photowooshop
  * Update URI:  https://github.com/gaborknippl/photowooshop
  * Description: Teljesen egyedi, 6 fotós montázs készítő WooCommerce termékekhez.
- * Version:     1.1.49
+ * Version:     1.1.50
  * Author:      Flodesign
  * Author URI:  https://www.flodesign.hu
  * Text Domain: photowooshop
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class Photowooshop
 {
     private static $instance = null;
-    const PLUGIN_VERSION = '1.1.49';
+    const PLUGIN_VERSION = '1.1.50';
     const VERSION_OPTION = 'photowooshop_plugin_version';
     const UPLOAD_SUBDIR = 'photowooshop';
     const IMAGE_UPLOAD_MAX_BYTES = 12582912; // 12 MB
@@ -48,7 +48,6 @@ class Photowooshop
     {
         add_action('init', array($this, 'maybe_run_upgrade'), 5);
         add_action('init', array($this, 'ensure_cleanup_schedule'));
-        add_action('init', array($this, 'handle_update_package_proxy_request'), 1);
         add_action(self::CLEANUP_HOOK, array($this, 'cleanup_orphan_uploads'));
         add_action('photowooshop_daily_index_rebuild', array($this, 'rebuild_material_index_snapshot'));
         add_action('admin_post_photowooshop_run_cleanup', array($this, 'handle_manual_cleanup'));
@@ -180,7 +179,7 @@ class Photowooshop
                 $release_data = array(
                     'version' => ltrim($tag, 'vV'),
                     'tag' => $tag,
-                    'zipball_url' => $this->build_update_package_proxy_url($tag),
+                    'zipball_url' => $this->pick_release_package_url($payload, $tag),
                     'html_url' => isset($payload['html_url']) ? (string) $payload['html_url'] : ('https://github.com/' . self::GITHUB_REPOSITORY),
                     'published_at' => isset($payload['published_at']) ? (string) $payload['published_at'] : '',
                     'body' => isset($payload['body']) ? (string) $payload['body'] : '',
@@ -217,7 +216,7 @@ class Photowooshop
                     $release_data = array(
                         'version' => ltrim($tag, 'vV'),
                         'tag' => $tag,
-                        'zipball_url' => $this->build_update_package_proxy_url($tag),
+                        'zipball_url' => $this->build_tag_zip_url($tag),
                         'html_url' => 'https://github.com/' . self::GITHUB_REPOSITORY . '/releases/tag/' . rawurlencode($tag),
                         'published_at' => '',
                         'body' => '',
@@ -299,18 +298,21 @@ class Photowooshop
         return 'https://github.com/' . self::GITHUB_REPOSITORY . '/archive/refs/tags/' . $safe_tag . '.zip';
     }
 
-    private function build_update_package_signature($tag)
+    private function pick_release_package_url($payload, $tag)
     {
-        return hash_hmac('sha256', (string) $tag, wp_salt('auth'));
-    }
+        if (!empty($payload['assets']) && is_array($payload['assets'])) {
+            foreach ($payload['assets'] as $asset) {
+                if (!is_array($asset) || empty($asset['browser_download_url'])) {
+                    continue;
+                }
+                $url = (string) $asset['browser_download_url'];
+                if (preg_match('/\.zip($|\?)/i', $url)) {
+                    return $url;
+                }
+            }
+        }
 
-    private function build_update_package_proxy_url($tag)
-    {
-        return add_query_arg(array(
-            'pws_update_package' => '1',
-            'tag' => rawurlencode((string) $tag),
-            'sig' => $this->build_update_package_signature($tag),
-        ), home_url('/'));
+        return $this->build_tag_zip_url($tag);
     }
 
     private function normalize_update_package_zip($source_zip, $target_zip)
@@ -377,60 +379,6 @@ class Photowooshop
         return true;
     }
 
-    public function handle_update_package_proxy_request()
-    {
-        if (!isset($_GET['pws_update_package']) || $_GET['pws_update_package'] !== '1') {
-            return;
-        }
-
-        $tag = isset($_GET['tag']) ? sanitize_text_field(wp_unslash($_GET['tag'])) : '';
-        $sig = isset($_GET['sig']) ? sanitize_text_field(wp_unslash($_GET['sig'])) : '';
-
-        if ($tag === '' || $sig === '' || !hash_equals($this->build_update_package_signature($tag), $sig)) {
-            status_header(403);
-            echo 'Forbidden';
-            exit;
-        }
-
-        if (!function_exists('download_url')) {
-            require_once ABSPATH . 'wp-admin/includes/file.php';
-        }
-
-        $source_url = $this->build_tag_zip_url($tag);
-        $source_zip = download_url($source_url, 30);
-        if (is_wp_error($source_zip)) {
-            status_header(502);
-            echo 'Update package download failed';
-            exit;
-        }
-
-        $target_zip = wp_tempnam('photowooshop-normalized-update.zip');
-        if (!$target_zip) {
-            @unlink($source_zip);
-            status_header(500);
-            echo 'Temporary file creation failed';
-            exit;
-        }
-
-        $normalized = $this->normalize_update_package_zip($source_zip, $target_zip);
-        @unlink($source_zip);
-
-        if (is_wp_error($normalized)) {
-            @unlink($target_zip);
-            status_header(500);
-            echo 'Package normalization failed';
-            exit;
-        }
-
-        nocache_headers();
-        header('Content-Type: application/zip');
-        header('Content-Disposition: attachment; filename="photowooshop-' . esc_attr($tag) . '.zip"');
-        header('Content-Length: ' . filesize($target_zip));
-        readfile($target_zip);
-        @unlink($target_zip);
-        exit;
-    }
-
     private function get_github_token()
     {
         if (defined('PHOTOWOOSHOP_GITHUB_TOKEN') && PHOTOWOOSHOP_GITHUB_TOKEN) {
@@ -462,18 +410,14 @@ class Photowooshop
             return $reply;
         }
 
-        $api_prefix = 'https://api.github.com/repos/' . self::GITHUB_REPOSITORY . '/zipball/';
-        if (strpos($package, $api_prefix) !== 0) {
+        $is_repo_package = (strpos($package, 'https://github.com/' . self::GITHUB_REPOSITORY . '/') === 0)
+            || (strpos($package, 'https://api.github.com/repos/' . self::GITHUB_REPOSITORY . '/') === 0);
+        if (!$is_repo_package) {
             return $reply;
         }
 
-        $token = $this->get_github_token();
-        if ($token === '') {
-            return $reply;
-        }
-
-        $tmp_file = wp_tempnam('photowooshop-update.zip');
-        if (!$tmp_file) {
+        $download_file = wp_tempnam('photowooshop-update-src.zip');
+        if (!$download_file) {
             return new WP_Error('photowooshop_update_temp_file', 'Nem sikerült ideiglenes fájlt létrehozni a frissítéshez.');
         }
 
@@ -481,22 +425,36 @@ class Photowooshop
             'timeout' => 30,
             'redirection' => 5,
             'stream' => true,
-            'filename' => $tmp_file,
+            'filename' => $download_file,
             'headers' => $this->build_github_request_headers(),
         ));
 
         if (is_wp_error($response)) {
-            @unlink($tmp_file);
+            @unlink($download_file);
             return $response;
         }
 
         $code = (int) wp_remote_retrieve_response_code($response);
         if ($code < 200 || $code >= 300) {
-            @unlink($tmp_file);
+            @unlink($download_file);
             return new WP_Error('photowooshop_update_download_failed', 'GitHub csomag letöltési hiba. HTTP: ' . $code);
         }
 
-        return $tmp_file;
+        $normalized_file = wp_tempnam('photowooshop-update-normalized.zip');
+        if (!$normalized_file) {
+            @unlink($download_file);
+            return new WP_Error('photowooshop_update_temp_file', 'Nem sikerült ideiglenes fájlt létrehozni a normalizált frissítéshez.');
+        }
+
+        $normalized = $this->normalize_update_package_zip($download_file, $normalized_file);
+        @unlink($download_file);
+
+        if (is_wp_error($normalized)) {
+            @unlink($normalized_file);
+            return $normalized;
+        }
+
+        return $normalized_file;
     }
 
     public function filter_github_plugin_information($result, $action, $args)
@@ -1736,7 +1694,7 @@ class Photowooshop
             <h1>Photowooshop Verziókövetés</h1>
             <p style="max-width:900px;">Gyors changelog kivonat a stabilitási és admin fejlesztésekről.</p>
 
-            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.49)</h2>
+            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.50)</h2>
             <table class="widefat striped" style="max-width: 760px;">
                 <tbody>
                     <tr><td><strong>1.1.17</strong></td><td>Anyaglista teljesítmény hotfix (500 hiba csökkentése).</td></tr>
@@ -1772,6 +1730,7 @@ class Photowooshop
                     <tr><td><strong>1.1.47</strong></td><td>Tesztkiadás az 1.1.46 telepítési folyamat ellenőrzéséhez.</td></tr>
                     <tr><td><strong>1.1.48</strong></td><td>Frissítési csomag-proxy normalizált plugin gyökérrel az érvénytelen csomag hiba ellen.</td></tr>
                     <tr><td><strong>1.1.49</strong></td><td>Tesztkiadás az 1.1.48 frissítési útvonal ellenőrzéséhez.</td></tr>
+                    <tr><td><strong>1.1.50</strong></td><td>Frissítési csomag normalizálás közvetlenül a letöltési hookban, proxy útvonal nélkül.</td></tr>
                 </tbody>
             </table>
         </div>
