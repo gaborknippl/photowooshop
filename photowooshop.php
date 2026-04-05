@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/gaborknippl/photowooshop
  * Update URI:  https://github.com/gaborknippl/photowooshop
  * Description: Teljesen egyedi, 6 fotós montázs készítő WooCommerce termékekhez.
- * Version:     1.1.32
+ * Version:     1.1.33
  * Author:      Flodesign
  * Author URI:  https://www.flodesign.hu
  * Text Domain: photowooshop
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class Photowooshop
 {
     private static $instance = null;
-    const PLUGIN_VERSION = '1.1.32';
+    const PLUGIN_VERSION = '1.1.33';
     const VERSION_OPTION = 'photowooshop_plugin_version';
     const UPLOAD_SUBDIR = 'photowooshop';
     const IMAGE_UPLOAD_MAX_BYTES = 12582912; // 12 MB
@@ -738,6 +738,15 @@ class Photowooshop
             array($this, 'help_page_html')
         );
 
+        add_submenu_page(
+            'photowooshop-main',
+            'Verziókövetés',
+            'Verziókövetés',
+            'manage_options',
+            'photowooshop-changelog',
+            array($this, 'version_tracking_page_html')
+        );
+
         // Hide the automatic duplicate first submenu entry (Photowooshop -> Photowooshop).
         remove_submenu_page('photowooshop-main', 'photowooshop-main');
     }
@@ -1300,21 +1309,6 @@ class Photowooshop
                 <p>Migrációs futás még nem történt.</p>
             <?php endif; ?>
 
-            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.25)</h2>
-            <table class="widefat striped" style="max-width: 760px;">
-                <tbody>
-                    <tr><td><strong>1.1.17</strong></td><td>Anyaglista teljesítmény hotfix (500 hiba csökkentése).</td></tr>
-                    <tr><td><strong>1.1.18</strong></td><td>Biztonságos lapozás egyszerusites az admin listahoz.</td></tr>
-                    <tr><td><strong>1.1.19</strong></td><td>Konzisztensebb listaszamlalas es lapozasi viselkedes.</td></tr>
-                    <tr><td><strong>1.1.20</strong></td><td>Migralt fajlok URL-feloldasa (fallback), anyagok jobb megtalalasa.</td></tr>
-                    <tr><td><strong>1.1.21</strong></td><td>Kompatibilitasi/fail-safe vedelmek admin oldalon.</td></tr>
-                    <tr><td><strong>1.1.22</strong></td><td>Safe mode lista: csak konnyu lekerdezes a stabilitasert.</td></tr>
-                    <tr><td><strong>1.1.23</strong></td><td>Fajlnev fallback kereses migralt allomanyokra.</td></tr>
-                    <tr><td><strong>1.1.24</strong></td><td>Modal ures-allapot uzenet es anyagmeta szures javitas.</td></tr>
-                    <tr><td><strong>1.1.25</strong></td><td>Kritikus syntax javitas, stabilitasi korrekcio.</td></tr>
-                </tbody>
-            </table>
-
             <h2 style="margin-top:24px;">Diagnosztika</h2>
             <table class="widefat striped" style="max-width: 760px;">
                 <tbody>
@@ -1465,6 +1459,7 @@ class Photowooshop
             <ul style="max-width:900px; list-style:disc; padding-left:20px;">
                 <li>A plugin GitHub verziókövetést használ.</li>
                 <li>WordPress frissítés ellenőrzés elsődlegesen Release, másodlagosan Tag alapján működik.</li>
+                <li>A részletes változáslista a <strong>Photowooshop -> Verziókövetés</strong> oldalon érhető el.</li>
                 <li>Rollback esetén célszeru stabil tagre visszaállni.</li>
             </ul>
 
@@ -1474,6 +1469,34 @@ class Photowooshop
                 <li>Ha anyagok hiányoznak: futtasson Javítás műveletet az érintett rendelésen.</li>
                 <li>Ha továbbra is gond van: nézze át a Beállítások oldalon a diagnosztikai blokkokat.</li>
             </ul>
+        </div>
+        <?php
+    }
+
+    public function version_tracking_page_html()
+    {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        ?>
+        <div class="wrap">
+            <h1>Photowooshop Verziókövetés</h1>
+            <p style="max-width:900px;">Gyors changelog kivonat a stabilitási és admin fejlesztésekről.</p>
+
+            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.25)</h2>
+            <table class="widefat striped" style="max-width: 760px;">
+                <tbody>
+                    <tr><td><strong>1.1.17</strong></td><td>Anyaglista teljesítmény hotfix (500 hiba csökkentése).</td></tr>
+                    <tr><td><strong>1.1.18</strong></td><td>Biztonságos lapozás egyszerusites az admin listahoz.</td></tr>
+                    <tr><td><strong>1.1.19</strong></td><td>Konzisztensebb listaszamlalas es lapozasi viselkedes.</td></tr>
+                    <tr><td><strong>1.1.20</strong></td><td>Migralt fajlok URL-feloldasa (fallback), anyagok jobb megtalalasa.</td></tr>
+                    <tr><td><strong>1.1.21</strong></td><td>Kompatibilitasi/fail-safe vedelmek admin oldalon.</td></tr>
+                    <tr><td><strong>1.1.22</strong></td><td>Safe mode lista: csak konnyu lekerdezes a stabilitasert.</td></tr>
+                    <tr><td><strong>1.1.23</strong></td><td>Fajlnev fallback kereses migralt allomanyokra.</td></tr>
+                    <tr><td><strong>1.1.24</strong></td><td>Modal ures-allapot uzenet es anyagmeta szures javitas.</td></tr>
+                    <tr><td><strong>1.1.25</strong></td><td>Kritikus syntax javitas, stabilitasi korrekcio.</td></tr>
+                </tbody>
+            </table>
         </div>
         <?php
     }
