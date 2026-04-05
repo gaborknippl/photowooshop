@@ -173,10 +173,10 @@ jQuery(document).ready(function ($) {
             const imgSrc = serverImageUrls[i] || slotsData[i];
             const hasImg = !!imgSrc;
             const content = hasImg ? `<img src="${imgSrc}" style="width:100%; height:100%; object-fit:cover;">` : `<span class="slot-label">${i}. hely</span>`;
-            const slotRadius = dynamicSlots ? getImageSlotRadius(dynamicSlots[i - 1], 4) : 4;
+            const slotRadiusCss = dynamicSlots ? getImageSlotBorderRadiusCss(dynamicSlots[i - 1], 4) : '4px';
 
             html += `
-                <div class="montage-slot slot-${i} ${hasImg ? 'has-image' : ''}" data-slot="${i}" style="border-radius:${slotRadius}px;">
+                <div class="montage-slot slot-${i} ${hasImg ? 'has-image' : ''}" data-slot="${i}" style="border-radius:${slotRadiusCss};">
                     ${content}
                     ${hasImg ? `
                         <div class="slot-actions">
@@ -221,12 +221,27 @@ jQuery(document).ready(function ($) {
         return Number.isNaN(z) ? fallback : z;
     }
 
-    function getImageSlotRadius(slot, fallback = 0) {
-        const radius = parseFloat(slot && slot.radius);
-        if (Number.isNaN(radius)) {
-            return fallback;
-        }
-        return Math.max(0, radius);
+    function getImageSlotCornerRadii(slot, fallback = 0) {
+        const base = Math.max(0, parseFloat(slot && slot.radius));
+        const safeBase = Number.isNaN(base) ? fallback : base;
+        const source = (slot && slot.radii && typeof slot.radii === 'object') ? slot.radii : {};
+
+        const tl = Math.max(0, parseFloat(source.tl));
+        const tr = Math.max(0, parseFloat(source.tr));
+        const br = Math.max(0, parseFloat(source.br));
+        const bl = Math.max(0, parseFloat(source.bl));
+
+        return {
+            tl: Number.isNaN(tl) ? safeBase : tl,
+            tr: Number.isNaN(tr) ? safeBase : tr,
+            br: Number.isNaN(br) ? safeBase : br,
+            bl: Number.isNaN(bl) ? safeBase : bl
+        };
+    }
+
+    function getImageSlotBorderRadiusCss(slot, fallback = 0) {
+        const radii = getImageSlotCornerRadii(slot, fallback);
+        return `${radii.tl}px ${radii.tr}px ${radii.br}px ${radii.bl}px`;
     }
 
     function renderShapeLayers() {
@@ -399,7 +414,7 @@ jQuery(document).ready(function ($) {
                     'top': slot.y + '%',
                     'width': slot.w + '%',
                     'height': slot.h + '%',
-                    'border-radius': getImageSlotRadius(slot, 4) + 'px',
+                    'border-radius': getImageSlotBorderRadiusCss(slot, 4),
                     'z-index': getImageSlotLayer(slot, 10)
                 });
             });
@@ -696,18 +711,43 @@ jQuery(document).ready(function ($) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
-        function drawRoundedRectPath(context, x, y, w, h, radius) {
-            const r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+        function normalizeCornerRadii(radii, w, h) {
+            const out = {
+                tl: Math.max(0, radii.tl || 0),
+                tr: Math.max(0, radii.tr || 0),
+                br: Math.max(0, radii.br || 0),
+                bl: Math.max(0, radii.bl || 0)
+            };
+
+            const factors = [1];
+            if (out.tl + out.tr > 0) factors.push(w / (out.tl + out.tr));
+            if (out.bl + out.br > 0) factors.push(w / (out.bl + out.br));
+            if (out.tl + out.bl > 0) factors.push(h / (out.tl + out.bl));
+            if (out.tr + out.br > 0) factors.push(h / (out.tr + out.br));
+
+            const scale = Math.min.apply(null, factors);
+            if (scale < 1) {
+                out.tl *= scale;
+                out.tr *= scale;
+                out.br *= scale;
+                out.bl *= scale;
+            }
+
+            return out;
+        }
+
+        function drawRoundedRectPath(context, x, y, w, h, radii) {
+            const r = normalizeCornerRadii(radii, w, h);
             context.beginPath();
-            context.moveTo(x + r, y);
-            context.lineTo(x + w - r, y);
-            context.quadraticCurveTo(x + w, y, x + w, y + r);
-            context.lineTo(x + w, y + h - r);
-            context.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-            context.lineTo(x + r, y + h);
-            context.quadraticCurveTo(x, y + h, x, y + h - r);
-            context.lineTo(x, y + r);
-            context.quadraticCurveTo(x, y, x + r, y);
+            context.moveTo(x + r.tl, y);
+            context.lineTo(x + w - r.tr, y);
+            context.quadraticCurveTo(x + w, y, x + w, y + r.tr);
+            context.lineTo(x + w, y + h - r.br);
+            context.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
+            context.lineTo(x + r.bl, y + h);
+            context.quadraticCurveTo(x, y + h, x, y + h - r.bl);
+            context.lineTo(x, y + r.tl);
+            context.quadraticCurveTo(x, y, x + r.tl, y);
             context.closePath();
         }
 
@@ -822,7 +862,7 @@ jQuery(document).ready(function ($) {
                     img.onload = function () {
                         let x, y, w, h;
                         let z = 10;
-                        let radius = 0;
+                        let radii = { tl: 0, tr: 0, br: 0, bl: 0 };
 
                         if (dynamicSlots) {
                             const slot = dynamicSlots[i - 1];
@@ -831,7 +871,7 @@ jQuery(document).ready(function ($) {
                             w = (slot.w / 100) * canvas.width;
                             h = (slot.h / 100) * canvas.height;
                             z = getImageSlotLayer(slot, 10);
-                            radius = getImageSlotRadius(slot, 0);
+                            radii = getImageSlotCornerRadii(slot, 0);
                         } else {
                             const layout = LAYOUTS[currentLayout];
                             w = canvas.width / layout.cols;
@@ -840,7 +880,7 @@ jQuery(document).ready(function ($) {
                             y = Math.floor((i - 1) / layout.cols) * h;
                         }
 
-                        resolve({ kind: 'image', z: z, img: img, x: x, y: y, w: w, h: h, radius: radius });
+                        resolve({ kind: 'image', z: z, img: img, x: x, y: y, w: w, h: h, radii: radii });
                     };
                     img.onerror = function () {
                         resolve(null);
@@ -881,10 +921,16 @@ jQuery(document).ready(function ($) {
 
                 allLayers.forEach((layer) => {
                     if (layer.kind === 'image') {
-                        const scaledRadius = Math.max(0, (layer.radius || 0) * radiusScale);
-                        if (scaledRadius > 0) {
+                        const scaledRadii = {
+                            tl: Math.max(0, (layer.radii && layer.radii.tl ? layer.radii.tl : 0) * radiusScale),
+                            tr: Math.max(0, (layer.radii && layer.radii.tr ? layer.radii.tr : 0) * radiusScale),
+                            br: Math.max(0, (layer.radii && layer.radii.br ? layer.radii.br : 0) * radiusScale),
+                            bl: Math.max(0, (layer.radii && layer.radii.bl ? layer.radii.bl : 0) * radiusScale)
+                        };
+
+                        if (scaledRadii.tl > 0 || scaledRadii.tr > 0 || scaledRadii.br > 0 || scaledRadii.bl > 0) {
                             ctx.save();
-                            drawRoundedRectPath(ctx, layer.x, layer.y, layer.w, layer.h, scaledRadius);
+                            drawRoundedRectPath(ctx, layer.x, layer.y, layer.w, layer.h, scaledRadii);
                             ctx.clip();
                             ctx.drawImage(layer.img, layer.x, layer.y, layer.w, layer.h);
                             ctx.restore();

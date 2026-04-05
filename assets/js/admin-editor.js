@@ -59,10 +59,40 @@ jQuery(document).ready(function ($) {
         return `Alakzat ${index + 1}`;
     }
 
+    function getImageSlotCornerRadii(slot, fallback = 10) {
+        const base = typeof slot.radius === 'number' ? Math.max(0, slot.radius) : fallback;
+        const source = (slot && slot.radii && typeof slot.radii === 'object') ? slot.radii : {};
+
+        const tl = Math.max(0, parseFloat(source.tl));
+        const tr = Math.max(0, parseFloat(source.tr));
+        const br = Math.max(0, parseFloat(source.br));
+        const bl = Math.max(0, parseFloat(source.bl));
+
+        return {
+            tl: Number.isNaN(tl) ? base : tl,
+            tr: Number.isNaN(tr) ? base : tr,
+            br: Number.isNaN(br) ? base : br,
+            bl: Number.isNaN(bl) ? base : bl
+        };
+    }
+
+    function getUnifiedRadiusValue(radii) {
+        if (radii.tl === radii.tr && radii.tr === radii.br && radii.br === radii.bl) {
+            return radii.tl;
+        }
+        return '';
+    }
+
+    function getImageSlotBorderRadiusCss(slot, fallback = 10) {
+        const radii = getImageSlotCornerRadii(slot, fallback);
+        return `${radii.tl}px ${radii.tr}px ${radii.br}px ${radii.bl}px`;
+    }
+
     function ensureSlotDefaults() {
         slots.forEach((slot, index) => {
             if (typeof slot.z !== 'number') slot.z = 10;
             if (typeof slot.radius !== 'number') slot.radius = 10;
+            slot.radii = getImageSlotCornerRadii(slot, 10);
             if (!slot.name) slot.name = defaultImageName(index);
         });
 
@@ -193,7 +223,8 @@ jQuery(document).ready(function ($) {
         imageSettingsContainer.empty();
 
         slots.forEach((slot, index) => {
-            const safeRadius = Math.max(0, parseFloat(slot.radius) || 0);
+            const safeRadii = getImageSlotCornerRadii(slot, 10);
+            const safeRadius = getUnifiedRadiusValue(safeRadii);
             const safeZ = parseInt(slot.z, 10);
 
             const settingsHtml = `
@@ -201,8 +232,24 @@ jQuery(document).ready(function ($) {
                     <h5 style="margin:0 0 10px;">${slot.name || defaultImageName(index)}</h5>
                     <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px 12px;">
                         <div>
-                            <label>Sarok lekerekítés:</label><br>
-                            <input type="number" data-field="radius" value="${safeRadius}" min="0" step="1" style="width:70px;"> px
+                            <label>Összes sarok:</label><br>
+                            <input type="number" data-field="radius" value="${safeRadius}" min="0" step="1" style="width:70px;" placeholder="külön értékek"> px
+                        </div>
+                        <div>
+                            <label>Bal felső:</label><br>
+                            <input type="number" data-field="radius_tl" value="${safeRadii.tl}" min="0" step="1" style="width:70px;"> px
+                        </div>
+                        <div>
+                            <label>Jobb felső:</label><br>
+                            <input type="number" data-field="radius_tr" value="${safeRadii.tr}" min="0" step="1" style="width:70px;"> px
+                        </div>
+                        <div>
+                            <label>Jobb alsó:</label><br>
+                            <input type="number" data-field="radius_br" value="${safeRadii.br}" min="0" step="1" style="width:70px;"> px
+                        </div>
+                        <div>
+                            <label>Bal alsó:</label><br>
+                            <input type="number" data-field="radius_bl" value="${safeRadii.bl}" min="0" step="1" style="width:70px;"> px
                         </div>
                         <div>
                             <label>Réteg (z-index):</label><br>
@@ -232,7 +279,29 @@ jQuery(document).ready(function ($) {
         if (field === 'radius') {
             val = Math.max(0, val);
             slots[idx].radius = val;
-            workspace.find(`.tpl-slot[data-index="${idx}"]`).css('border-radius', val + 'px');
+            slots[idx].radii = { tl: val, tr: val, br: val, bl: val };
+            workspace.find(`.tpl-slot[data-index="${idx}"]`).css('border-radius', getImageSlotBorderRadiusCss(slots[idx], 10));
+            const row = imageSettingsContainer.find(`.image-slot-setting[data-index="${idx}"]`);
+            row.find('input[data-field="radius_tl"]').val(val);
+            row.find('input[data-field="radius_tr"]').val(val);
+            row.find('input[data-field="radius_br"]').val(val);
+            row.find('input[data-field="radius_bl"]').val(val);
+            $(this).val(val);
+        }
+
+        if (field === 'radius_tl' || field === 'radius_tr' || field === 'radius_br' || field === 'radius_bl') {
+            val = Math.max(0, val);
+            const key = field.replace('radius_', '');
+            const radii = getImageSlotCornerRadii(slots[idx], 10);
+            radii[key] = val;
+            slots[idx].radii = radii;
+            slots[idx].radius = radii.tl;
+            workspace.find(`.tpl-slot[data-index="${idx}"]`).css('border-radius', getImageSlotBorderRadiusCss(slots[idx], 10));
+
+            const unified = getUnifiedRadiusValue(radii);
+            imageSettingsContainer
+                .find(`.image-slot-setting[data-index="${idx}"] input[data-field="radius"]`)
+                .val(unified);
             $(this).val(val);
         }
 
@@ -764,6 +833,7 @@ jQuery(document).ready(function ($) {
             if (typeof slot.radius !== 'number') {
                 slot.radius = 10;
             }
+            slot.radii = getImageSlotCornerRadii(slot, 10);
             if (!slot.name) {
                 slot.name = defaultImageName(index);
             }
@@ -777,7 +847,7 @@ jQuery(document).ready(function ($) {
                 width: slot.w + '%',
                 height: slot.h + '%',
                 zIndex: slot.z,
-                borderRadius: slot.radius + 'px'
+                borderRadius: getImageSlotBorderRadiusCss(slot, 10)
             });
 
             workspace.append(el);
@@ -865,7 +935,16 @@ jQuery(document).ready(function ($) {
     }
 
     addBtn.on('click', function () {
-        slots.push({ x: 10, y: 10, w: 20, h: 20, z: 10, radius: 10, name: defaultImageName(slots.length) });
+        slots.push({
+            x: 10,
+            y: 10,
+            w: 20,
+            h: 20,
+            z: 10,
+            radius: 10,
+            radii: { tl: 10, tr: 10, br: 10, bl: 10 },
+            name: defaultImageName(slots.length)
+        });
         renderSlots();
         renderLayerManager();
         save();
