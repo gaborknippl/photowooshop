@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/gaborknippl/photowooshop
  * Update URI:  https://github.com/gaborknippl/photowooshop
  * Description: Teljesen egyedi, 6 fotós montázs készítő WooCommerce termékekhez.
- * Version:     1.1.37
+ * Version:     1.1.38
  * Author:      Flodesign
  * Author URI:  https://www.flodesign.hu
  * Text Domain: photowooshop
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class Photowooshop
 {
     private static $instance = null;
-    const PLUGIN_VERSION = '1.1.37';
+    const PLUGIN_VERSION = '1.1.38';
     const VERSION_OPTION = 'photowooshop_plugin_version';
     const UPLOAD_SUBDIR = 'photowooshop';
     const IMAGE_UPLOAD_MAX_BYTES = 12582912; // 12 MB
@@ -59,6 +59,7 @@ class Photowooshop
         add_filter('site_transient_update_plugins', array($this, 'inject_github_plugin_update'));
         add_filter('plugins_api', array($this, 'filter_github_plugin_information'), 20, 3);
         add_filter('upgrader_source_selection', array($this, 'fix_github_upgrader_source_dir'), 10, 4);
+        add_filter('upgrader_pre_download', array($this, 'download_github_package_with_auth'), 10, 4);
 
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
         add_action('woocommerce_before_add_to_cart_button', array($this, 'add_customize_button'));
@@ -300,7 +301,64 @@ class Photowooshop
     private function build_tag_zip_url($tag)
     {
         $safe_tag = rawurlencode((string) $tag);
-        return 'https://codeload.github.com/' . self::GITHUB_REPOSITORY . '/zip/refs/tags/' . $safe_tag;
+        return 'https://api.github.com/repos/' . self::GITHUB_REPOSITORY . '/zipball/' . $safe_tag;
+    }
+
+    private function get_github_token()
+    {
+        if (defined('PHOTOWOOSHOP_GITHUB_TOKEN') && PHOTOWOOSHOP_GITHUB_TOKEN) {
+            return trim((string) PHOTOWOOSHOP_GITHUB_TOKEN);
+        }
+
+        $token = get_option('photowooshop_github_token', '');
+        return is_string($token) ? trim($token) : '';
+    }
+
+    public function download_github_package_with_auth($reply, $package, $upgrader, $hook_extra)
+    {
+        if (!is_string($package) || $package === '') {
+            return $reply;
+        }
+
+        $api_prefix = 'https://api.github.com/repos/' . self::GITHUB_REPOSITORY . '/zipball/';
+        if (strpos($package, $api_prefix) !== 0) {
+            return $reply;
+        }
+
+        $token = $this->get_github_token();
+        if ($token === '') {
+            return $reply;
+        }
+
+        $tmp_file = wp_tempnam('photowooshop-update.zip');
+        if (!$tmp_file) {
+            return new WP_Error('photowooshop_update_temp_file', 'Nem sikerült ideiglenes fájlt létrehozni a frissítéshez.');
+        }
+
+        $response = wp_remote_get($package, array(
+            'timeout' => 30,
+            'redirection' => 5,
+            'stream' => true,
+            'filename' => $tmp_file,
+            'headers' => array(
+                'Accept' => 'application/vnd.github+json',
+                'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . home_url('/'),
+                'Authorization' => 'Bearer ' . $token,
+            ),
+        ));
+
+        if (is_wp_error($response)) {
+            @unlink($tmp_file);
+            return $response;
+        }
+
+        $code = (int) wp_remote_retrieve_response_code($response);
+        if ($code < 200 || $code >= 300) {
+            @unlink($tmp_file);
+            return new WP_Error('photowooshop_update_download_failed', 'GitHub csomag letöltési hiba. HTTP: ' . $code);
+        }
+
+        return $tmp_file;
     }
 
     public function filter_github_plugin_information($result, $action, $args)
@@ -1337,6 +1395,10 @@ class Photowooshop
                         <td><?php echo esc_html(self::PLUGIN_VERSION); ?> <small style="color:#888">(telepített)</small></td>
                     </tr>
                     <tr>
+                        <td><strong>GitHub token</strong></td>
+                        <td><?php echo $this->get_github_token() !== '' ? '<span style="color:#2e7d32;">Beállítva</span>' : '<span style="color:#b45309;">Nincs beállítva</span>'; ?></td>
+                    </tr>
+                    <tr>
                         <td><strong>Környezet</strong></td>
                         <td><?php echo esc_html(function_exists('wp_get_environment_type') ? wp_get_environment_type() : 'unknown'); ?></td>
                     </tr>
@@ -1503,7 +1565,7 @@ class Photowooshop
             <h1>Photowooshop Verziókövetés</h1>
             <p style="max-width:900px;">Gyors changelog kivonat a stabilitási és admin fejlesztésekről.</p>
 
-            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.37)</h2>
+            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.38)</h2>
             <table class="widefat striped" style="max-width: 760px;">
                 <tbody>
                     <tr><td><strong>1.1.17</strong></td><td>Anyaglista teljesítmény hotfix (500 hiba csökkentése).</td></tr>
@@ -1527,6 +1589,7 @@ class Photowooshop
                     <tr><td><strong>1.1.35</strong></td><td>Frissítési folyamat ellenőrző kiadás (stabilitási teszt).</td></tr>
                     <tr><td><strong>1.1.36</strong></td><td>Csomag letöltési URL átváltás codeload végpontra.</td></tr>
                     <tr><td><strong>1.1.37</strong></td><td>Rétegpanel: új kuka ikonos törlés gomb minden rétegtípushoz.</td></tr>
+                    <tr><td><strong>1.1.38</strong></td><td>GitHub update csomag: tokenes hitelesített letöltés támogatás (privát repo kompatibilitás).</td></tr>
                 </tbody>
             </table>
         </div>
