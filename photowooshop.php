@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/gaborknippl/photowooshop
  * Update URI:  https://github.com/gaborknippl/photowooshop
  * Description: Teljesen egyedi, 6 fotós montázs készítő WooCommerce termékekhez.
- * Version:     1.1.35
+ * Version:     1.1.36
  * Author:      Flodesign
  * Author URI:  https://www.flodesign.hu
  * Text Domain: photowooshop
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class Photowooshop
 {
     private static $instance = null;
-    const PLUGIN_VERSION = '1.1.35';
+    const PLUGIN_VERSION = '1.1.36';
     const VERSION_OPTION = 'photowooshop_plugin_version';
     const UPLOAD_SUBDIR = 'photowooshop';
     const IMAGE_UPLOAD_MAX_BYTES = 12582912; // 12 MB
@@ -181,7 +181,7 @@ class Photowooshop
                 $release_data = array(
                     'version' => ltrim($tag, 'vV'),
                     'tag' => $tag,
-                    'zipball_url' => isset($payload['zipball_url']) ? (string) $payload['zipball_url'] : '',
+                    'zipball_url' => $this->build_tag_zip_url($tag),
                     'html_url' => isset($payload['html_url']) ? (string) $payload['html_url'] : ('https://github.com/' . self::GITHUB_REPOSITORY),
                     'published_at' => isset($payload['published_at']) ? (string) $payload['published_at'] : '',
                     'body' => isset($payload['body']) ? (string) $payload['body'] : '',
@@ -221,7 +221,7 @@ class Photowooshop
                     $release_data = array(
                         'version' => ltrim($tag, 'vV'),
                         'tag' => $tag,
-                        'zipball_url' => 'https://github.com/' . self::GITHUB_REPOSITORY . '/archive/refs/tags/' . rawurlencode($tag) . '.zip',
+                        'zipball_url' => $this->build_tag_zip_url($tag),
                         'html_url' => 'https://github.com/' . self::GITHUB_REPOSITORY . '/releases/tag/' . rawurlencode($tag),
                         'published_at' => '',
                         'body' => '',
@@ -272,7 +272,7 @@ class Photowooshop
         if (version_compare($installed_version, (string) $release['version'], '<')) {
             $package_url = !empty($release['zipball_url'])
                 ? $release['zipball_url']
-                : ('https://github.com/' . self::GITHUB_REPOSITORY . '/archive/refs/tags/' . rawurlencode((string) $release['tag']) . '.zip');
+                : $this->build_tag_zip_url((string) $release['tag']);
 
             $transient->response[$plugin_file] = (object) array(
                 'slug' => dirname($plugin_file),
@@ -295,6 +295,12 @@ class Photowooshop
         }
 
         return $transient;
+    }
+
+    private function build_tag_zip_url($tag)
+    {
+        $safe_tag = rawurlencode((string) $tag);
+        return 'https://codeload.github.com/' . self::GITHUB_REPOSITORY . '/zip/refs/tags/' . $safe_tag;
     }
 
     public function filter_github_plugin_information($result, $action, $args)
