@@ -1,0 +1,381 @@
+#photowooshop-modal {
+    display: none;
+    position: fixed !important;
+    z-index: 9999999999 !important;
+    /* Insane Z-index */
+    /* Absolute top */
+    left: 0 !important;
+    top: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background-color: rgba(0, 0, 0, 0.9) !important;
+    /* Nearly opaque */
+    backdrop-filter: blur(15px) !important;
+    overflow: hidden !important;
+}
+
+#photowooshop-modal *,
+.cropping-modal * {
+    box-sizing: border-box !important;
+}
+
+.photowooshop-modal-content {
+    background: #ffffff;
+    margin: 2vh auto;
+    width: 96%;
+    max-width: 1600px;
+    /* Maximized for better visibility */
+    height: 96vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    position: relative;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    animation: photowooshop-slide-up 0.3s ease-out;
+}
+
+@keyframes photowooshop-slide-up {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.photowooshop-close {
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    font-size: 28px;
+    font-weight: 900;
+    cursor: pointer;
+    color: #333;
+    z-index: 100;
+    line-height: 1;
+    background: rgba(255, 255, 255, 0.8);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.photowooshop-close:hover {
+    background: #6200ee;
+    color: #fff;
+}
+
+#photowooshop-editor-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 5px;
+    padding-top: 40px;
+    /* Space for close button */
+    overflow-y: auto;
+    /* Enable scrolling for large mockup */
+    overflow-x: hidden;
+    gap: 5px;
+}
+
+.editor-header {
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.editor-header h2 {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.2;
+}
+
+.editor-header p {
+    margin: 0;
+    font-size: 11px;
+    display: none;
+    /* Hidden on desktop to save space */
+}
+
+.editor-scrollable-controls {
+    flex: 0 0 auto;
+    overflow-y: auto;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    /* No max-height - controls can be fully scrolled to */
+}
+
+/* Mobile specific adjustments inside the media query later if needed, but this is general */
+
+.montage-grid-wrapper {
+    background: #fdfdfd;
+    padding: 2px;
+    border: none;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 0 0 auto;
+    /* Fixed size, not flexible */
+    min-height: 80vh;
+    /* Very large mockup */
+    width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+}
+
+.montage-grid {
+    position: relative;
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    margin: 0 auto;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.montage-grid.dynamic-tpl {
+    display: block !important;
+}
+
+.montage-slot {
+    background: #f0f0f5;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.dynamic-tpl .montage-slot {
+    aspect-ratio: auto !important;
+    border-style: solid;
+    border-width: 1px;
+    border-color: rgba(98, 0, 238, 0.2);
+}
+
+.montage-slot:hover {
+    transform: scale(1.02);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    z-index: 10 !important;
+}
+
+.editor-controls {
+    flex-shrink: 0;
+    padding: 15px 0 10px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.photowooshop-btn {
+    background: #6200ee;
+    color: white;
+    border: none;
+    padding: 18px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(98, 0, 238, 0.2);
+    border-bottom: 3px solid rgba(0, 0, 0, 0.1);
+}
+
+.photowooshop-btn:hover:not(:disabled) {
+    background: #4b00c3;
+    transform: translateY(-1px);
+}
+
+.photowooshop-btn:active:not(:disabled) {
+    transform: translateY(2px);
+    border-bottom-width: 1px;
+}
+
+.photowooshop-btn:disabled {
+    background: #e6e6e6;
+    color: #aaa;
+    box-shadow: none;
+    cursor: not-allowed;
+    border-bottom: none;
+}
+
+/* Cropping Modal */
+.cropping-modal {
+    position: fixed;
+    z-index: 2147483647 !important;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    display: none;
+    flex-direction: column;
+}
+
+.cropper-container-inner {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.cropping-toolbar {
+    background: #111;
+    padding: 25px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.montage-slot.has-image:hover .slot-actions {
+    display: flex;
+}
+
+.slot-actions {
+    display: none;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 5px;
+    justify-content: space-around;
+    backdrop-filter: blur(5px);
+}
+
+.action-btn {
+    font-size: 16px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.action-btn:hover {
+    transform: scale(1.3);
+}
+
+.mockup-selector {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    justify-content: center;
+}
+
+.mockup-option {
+    padding: 8px 15px;
+    border: 2px solid #ddd;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    background: #fff;
+    transition: all 0.2s;
+}
+
+.mockup-option.active {
+    border-color: #6200ee;
+    color: #6200ee;
+    background: #f5f0ff;
+    font-weight: 700;
+}
+
+.extra-customization {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 20px;
+    background: #fdfdfd;
+    border: 1px solid #eee;
+    border-radius: 12px;
+}
+
+.field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.field-row label {
+    font-weight: 700;
+    font-size: 14px;
+    color: #333;
+}
+
+.photowooshop-text-field {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 15px;
+}
+
+@media (max-width: 1024px) {
+    .photowooshop-modal-content {
+        width: 98%;
+        height: 98vh;
+        margin: 1vh auto;
+        border-radius: 8px;
+    }
+
+    #photowooshop-editor-container {
+        padding: 5px;
+        padding-top: 40px;
+        gap: 5px;
+    }
+
+    .montage-grid-wrapper {
+        padding: 2px;
+        min-height: 80vh;
+        /* Same as desktop - large mockup */
+    }
+
+    .photowooshop-btn {
+        padding: 15px;
+        font-size: 15px;
+    }
+}
+
+/* Admin Perspective Designer */
+.mockup-handle {
+    width: 16px;
+    height: 16px;
+    background: #007cba;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    position: absolute;
+    z-index: 300;
+    cursor: move;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.mockup-handle:hover {
+    background: #ff5722;
+    transform: translate(-50%, -50%) scale(1.2);
+}
+
+.mockup-handle[data-corner="tl"] {
+    color: #fff;
+}
+
+#mockup-polygon {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 250;
+}

@@ -1,0 +1,43 @@
+/* Google Fonts imports (ha valamelyik mégis elérhető náluk) */
+@import url('https://fonts.googleapis.com/css2?family=Arima:wght@400;700&family=Arima+Madurai:wght@400;700&display=swap');
+
+/* Egyedi betűtípusok betöltése a plugon assets/fonts/ mappájából */
+@font-face {
+    font-family: 'hello honey';
+    src: url('../fonts/hello-honey.ttf') format('truetype'),
+        url('../fonts/hello-honey.otf') format('opentype'),
+        url('../fonts/hello-honey.woff') format('woff'),
+        url('../fonts/hello-honey.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Densia Sans';
+    src: url('../fonts/DensiaSans.ttf') format('truetype'),
+        url('../fonts/DensiaSans.otf') format('opentype'),
+        url('../fonts/DensiaSans.woff') format('woff'),
+        url('../fonts/DensiaSans.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Capsuula Regular';
+    src: url('../fonts/Capsuula.ttf') format('truetype'),
+        url('../fonts/Capsuula.otf') format('opentype'),
+        url('../fonts/Capsuula.woff') format('woff'),
+        url('../fonts/Capsuula.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Arima Koshi Regular';
+    src: url('../fonts/ArimaKoshi.ttf') format('truetype'),
+        url('../fonts/ArimaKoshi.otf') format('opentype'),
+        url('../fonts/ArimaKoshi.woff') format('woff'),
+        url('../fonts/ArimaKoshi.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}

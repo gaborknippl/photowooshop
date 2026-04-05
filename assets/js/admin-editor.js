@@ -1,0 +1,1044 @@
+jQuery(document).ready(function ($) {
+    const workspace = $('#tpl-workspace');
+    const bgInput = $('#_photowooshop_bg_url');
+    const slotsInput = $('#_photowooshop_slots_json');
+    const addBtn = $('#add-slot-btn');
+    const layerListContainer = $('#tpl-layer-list');
+
+    let slots = [];
+    let textSlots = [];
+    let shapeSlots = [];
+
+    const textSlotsInput = $('#_photowooshop_text_slots_json');
+    const addTextBtn = $('#add-text-btn');
+    const textSettingsContainer = $('#text-slots-container');
+    const shapeSlotsInput = $('#_photowooshop_shape_slots_json');
+    const addShapeBtn = $('#add-shape-btn');
+    const shapeSettingsContainer = $('#shape-slots-container');
+
+    try {
+        slots = JSON.parse(slotsInput.val() || '[]');
+    } catch (e) { slots = []; }
+
+    try {
+        textSlots = JSON.parse(photowooshop_admin_vars.text_slots || '[]');
+    } catch (e) { textSlots = []; }
+
+    try {
+        shapeSlots = JSON.parse(photowooshop_admin_vars.shape_slots || '[]');
+    } catch (e) { shapeSlots = []; }
+
+    function init() {
+        if (photowooshop_admin_vars.bg_url) {
+            updateBackground(photowooshop_admin_vars.bg_url);
+        }
+        renderSlots();
+        renderTextSlots();
+        renderShapeSlots();
+        renderLayerManager();
+    }
+
+    function saveTextSlots() {
+        textSlotsInput.val(JSON.stringify(textSlots));
+    }
+
+    function saveShapeSlots() {
+        shapeSlotsInput.val(JSON.stringify(shapeSlots));
+    }
+
+    function defaultImageName(index) {
+        return `Kephely ${index + 1}`;
+    }
+
+    function defaultTextName(index) {
+        return `Szoveg ${index + 1}`;
+    }
+
+    function defaultShapeName(index) {
+        return `Alakzat ${index + 1}`;
+    }
+
+    function ensureSlotDefaults() {
+        slots.forEach((slot, index) => {
+            if (typeof slot.z !== 'number') slot.z = 10;
+            if (!slot.name) slot.name = defaultImageName(index);
+        });
+
+        textSlots.forEach((slot, index) => {
+            if (typeof slot.z !== 'number') slot.z = 50;
+            if (!slot.name) slot.name = defaultTextName(index);
+        });
+
+        shapeSlots.forEach((slot, index) => {
+            if (typeof slot.z !== 'number') slot.z = 30;
+            if (!slot.name) slot.name = defaultShapeName(index);
+        });
+    }
+
+    function getLayerItemsSorted() {
+        const items = [];
+
+        slots.forEach((slot, index) => {
+            items.push({ key: `image-${index}`, type: 'image', index: index, name: slot.name, z: slot.z });
+        });
+
+        textSlots.forEach((slot, index) => {
+            items.push({ key: `text-${index}`, type: 'text', index: index, name: slot.name, z: slot.z });
+        });
+
+        shapeSlots.forEach((slot, index) => {
+            items.push({ key: `shape-${index}`, type: 'shape', index: index, name: slot.name, z: slot.z });
+        });
+
+        items.sort((a, b) => b.z - a.z);
+        return items;
+    }
+
+    function updateWorkspaceLayerStyles() {
+        slots.forEach((slot, index) => {
+            workspace.find(`.tpl-slot[data-index="${index}"]`).css('z-index', slot.z);
+        });
+        textSlots.forEach((slot, index) => {
+            workspace.find(`.tpl-text-slot[data-index="${index}"]`).css('z-index', slot.z);
+        });
+        shapeSlots.forEach((slot, index) => {
+            workspace.find(`.tpl-shape-slot[data-index="${index}"]`).css('z-index', slot.z);
+        });
+    }
+
+    function syncLayerValuesToSettings() {
+        slots.forEach((slot, index) => {
+            const row = $(`.image-slot-layer-setting[data-index="${index}"]`);
+            row.find('input[data-field="z"]').val(slot.z);
+        });
+
+        textSlots.forEach((slot, index) => {
+            const row = textSettingsContainer.find(`.text-slot-setting[data-index="${index}"]`);
+            row.find('input[data-field="z"]').val(slot.z);
+        });
+
+        shapeSlots.forEach((slot, index) => {
+            const row = shapeSettingsContainer.find(`.shape-slot-setting[data-index="${index}"]`);
+            row.find('input[data-field="z"]').val(slot.z);
+        });
+    }
+
+    function setLayerName(type, index, value) {
+        const trimmed = (value || '').trim();
+        if (type === 'image' && slots[index]) {
+            slots[index].name = trimmed || defaultImageName(index);
+            save();
+        }
+        if (type === 'text' && textSlots[index]) {
+            textSlots[index].name = trimmed || defaultTextName(index);
+            saveTextSlots();
+        }
+        if (type === 'shape' && shapeSlots[index]) {
+            shapeSlots[index].name = trimmed || defaultShapeName(index);
+            saveShapeSlots();
+        }
+    }
+
+    function applyLayerOrderFromList() {
+        const orderedKeys = [];
+        layerListContainer.find('.layer-item').each(function () {
+            orderedKeys.push($(this).data('key'));
+        });
+
+        const maxZ = orderedKeys.length * 10;
+        orderedKeys.forEach((key, orderIndex) => {
+            const z = maxZ - (orderIndex * 10);
+            const [type, idxRaw] = String(key).split('-');
+            const idx = parseInt(idxRaw, 10);
+
+            if (type === 'image' && slots[idx]) slots[idx].z = z;
+            if (type === 'text' && textSlots[idx]) textSlots[idx].z = z;
+            if (type === 'shape' && shapeSlots[idx]) shapeSlots[idx].z = z;
+        });
+
+        updateWorkspaceLayerStyles();
+        syncLayerValuesToSettings();
+        save();
+        saveTextSlots();
+        saveShapeSlots();
+        renderLayerManager();
+    }
+
+    function renderLayerManager() {
+        ensureSlotDefaults();
+        layerListContainer.empty();
+
+        const items = getLayerItemsSorted();
+        if (!items.length) {
+            layerListContainer.html('<p style="margin:6px; color:#777;">Nincs reteg.</p>');
+            return;
+        }
+
+        items.forEach((item) => {
+            const typeLabel = item.type === 'image' ? 'Kep' : (item.type === 'text' ? 'Szoveg' : 'Alakzat');
+            layerListContainer.append(`
+                <div class="layer-item" draggable="true" data-key="${item.key}" data-type="${item.type}" data-index="${item.index}">
+                    <span class="layer-handle">≡</span>
+                    <span class="layer-type layer-${item.type}">${typeLabel}</span>
+                    <input type="text" class="layer-name-input" value="${item.name || ''}" data-type="${item.type}" data-index="${item.index}" title="Reteg neve">
+                    <span class="layer-z">z: ${item.z}</span>
+                </div>
+            `);
+        });
+    }
+
+    addTextBtn.on('click', function () {
+        textSlots.push({
+            x: 50, y: 50, max_w: 80,
+            color: '#ffffff',
+            multiline: false,
+            font_family: 'hello honey',
+            font_size: 50,
+            z: 50,
+            name: defaultTextName(textSlots.length)
+        });
+        renderTextSlots();
+        renderLayerManager();
+        saveTextSlots();
+    });
+
+    textSettingsContainer.on('input change', 'input, select', function () {
+        const idx = $(this).closest('.text-slot-setting').data('index');
+        const field = $(this).data('field');
+        let val = $(this).val();
+
+        if ($(this).attr('type') === 'checkbox') {
+            val = $(this).is(':checked');
+        } else if ($(this).attr('type') === 'number') {
+            val = parseFloat(val) || 0;
+        }
+
+        textSlots[idx][field] = val;
+
+        // Update visual
+        const visualEl = workspace.find(`.tpl-text-slot[data-index="${idx}"]`);
+        if (field === 'x') visualEl.css('left', val + '%');
+        if (field === 'y') visualEl.css('top', val + '%');
+        if (field === 'max_w') visualEl.css('width', val + '%');
+        if (field === 'color') visualEl.css('color', val);
+        if (field === 'font_family') visualEl.css('font-family', `"${val}", cursive, sans-serif`);
+        if (field === 'font_size') visualEl.css('font-size', Math.max(10, val * 0.5) + 'px');
+        if (field === 'z') visualEl.css('z-index', parseInt(val, 10) || 50);
+
+        saveTextSlots();
+        if (field === 'z') {
+            renderLayerManager();
+        }
+    });
+
+    textSettingsContainer.on('click', '.remove-text-slot', function () {
+        const idx = $(this).closest('.text-slot-setting').data('index');
+        textSlots.splice(idx, 1);
+        renderTextSlots();
+        renderLayerManager();
+        saveTextSlots();
+    });
+
+    addShapeBtn.on('click', function () {
+        shapeSlots.push({
+            type: 'rect',
+            x: 50,
+            y: 50,
+            w: 40,
+            h: 20,
+            color: '#000000',
+            opacity: 0.45,
+            radius: 10,
+            z: 30,
+            name: defaultShapeName(shapeSlots.length)
+        });
+        renderShapeSlots();
+        renderLayerManager();
+        saveShapeSlots();
+    });
+
+    shapeSettingsContainer.on('input change', 'input, select', function () {
+        const idx = $(this).closest('.shape-slot-setting').data('index');
+        const field = $(this).data('field');
+        let val = $(this).val();
+
+        if ($(this).attr('type') === 'number' || field === 'opacity') {
+            val = parseFloat(val);
+            if (Number.isNaN(val)) val = 0;
+        }
+
+        if (!shapeSlots[idx]) {
+            return;
+        }
+
+        shapeSlots[idx][field] = val;
+
+        if (field === 'opacity') {
+            if (shapeSlots[idx][field] < 0) shapeSlots[idx][field] = 0;
+            if (shapeSlots[idx][field] > 1) shapeSlots[idx][field] = 1;
+            $(this).val(shapeSlots[idx][field]);
+        }
+
+        if (field === 'radius') {
+            if (shapeSlots[idx][field] < 0) shapeSlots[idx][field] = 0;
+            $(this).val(shapeSlots[idx][field]);
+        }
+
+        const visualEl = workspace.find(`.tpl-shape-slot[data-index="${idx}"]`);
+        applyShapeStyle(visualEl, shapeSlots[idx]);
+        saveShapeSlots();
+        if (field === 'z') {
+            renderLayerManager();
+        }
+    });
+
+    shapeSettingsContainer.on('click', '.remove-shape-slot', function () {
+        const idx = $(this).closest('.shape-slot-setting').data('index');
+        shapeSlots.splice(idx, 1);
+        renderShapeSlots();
+        renderLayerManager();
+        saveShapeSlots();
+    });
+
+    function renderTextSlots() {
+        workspace.find('.tpl-text-slot').remove();
+        textSettingsContainer.empty();
+
+        const fontOptions = photowooshop_admin_vars.font_families || ['hello honey', 'Densia Sans', 'Arima Koshi Regular', 'Capsuula Regular', 'Arial', 'Times New Roman', 'Courier New', 'Impact'];
+
+        textSlots.forEach((slot, index) => {
+            // Workspace Visual Render
+            const el = $('<div class="tpl-text-slot">').attr('data-index', index);
+            if (!slot.name) slot.name = defaultTextName(index);
+            el.text(slot.name);
+            const safeZ = parseInt(slot.z, 10);
+            el.css({
+                position: 'absolute',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxSizing: 'border-box',
+                transform: 'translate(-50%, -50%)',
+                cursor: 'move',
+                background: 'rgba(255, 193, 7, 0.4)',
+                border: '2px dashed #ffc107',
+                padding: '5px',
+                fontWeight: 'bold',
+                whiteSpace: 'nowrap',
+                zIndex: Number.isNaN(safeZ) ? 50 : safeZ,
+                left: slot.x + '%',
+                top: slot.y + '%',
+                width: slot.max_w + '%',
+                color: slot.color,
+                fontFamily: `"${slot.font_family}", cursive, sans-serif`,
+                fontSize: Math.max(10, slot.font_size * 0.5) + 'px'
+            });
+            workspace.append(el);
+            makeTextInteractable(el[0]);
+
+            // Settings Render
+            const settingsHtml = `
+                <div class="text-slot-setting" data-index="${index}" style="background:#fff; border:1px solid #ddd; padding:10px; margin-bottom:10px; border-radius:4px; position:relative;">
+                    <button type="button" class="remove-text-slot button button-small" style="position:absolute; right:10px; top:10px; color:red; border-color:red;">Törlés</button>
+                    <h5>${slot.name}</h5>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                        <div>
+                            <label>X (közép):</label><br>
+                            <input type="number" data-field="x" value="${slot.x}" step="0.1" style="width:70px;"> %
+                        </div>
+                        <div>
+                            <label>Y (közép):</label><br>
+                            <input type="number" data-field="y" value="${slot.y}" step="0.1" style="width:70px;"> %
+                        </div>
+                        <div>
+                            <label>Max. Szélesség:</label><br>
+                            <input type="number" data-field="max_w" value="${slot.max_w}" step="1" max="100" style="width:70px;"> %
+                        </div>
+                        <div>
+                            <label>Szín:</label><br>
+                            <input type="color" data-field="color" value="${slot.color}">
+                        </div>
+                        <div>
+                            <label>Betűtípus:</label><br>
+                            <select data-field="font_family">
+                                ${fontOptions.map(f => `<option value="${f}" ${slot.font_family === f ? 'selected' : ''}>${f}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label>Méretezés (1-100):</label><br>
+                            <input type="number" data-field="font_size" value="${slot.font_size}" step="1" max="200" style="width:70px;">
+                        </div>
+                        <div>
+                            <label>Réteg (z-index):</label><br>
+                            <input type="number" data-field="z" value="${Number.isNaN(safeZ) ? 50 : safeZ}" step="1" style="width:70px;">
+                        </div>
+                        <div style="width:100%; margin-top:5px;">
+                            <label><input type="checkbox" data-field="multiline" ${slot.multiline ? 'checked' : ''}> Több soros szöveg engedélyezése</label>
+                        </div>
+                    </div>
+                </div>
+            `;
+            textSettingsContainer.append(settingsHtml);
+        });
+    }
+
+    function applyShapeStyle(el, slot) {
+        const opacity = typeof slot.opacity === 'number' ? slot.opacity : 0.45;
+        const radius = typeof slot.radius === 'number' ? slot.radius : 10;
+        const z = typeof slot.z === 'number' ? slot.z : 30;
+
+        el.css({
+            position: 'absolute',
+            transform: 'translate(-50%, -50%)',
+            left: slot.x + '%',
+            top: slot.y + '%',
+            width: slot.w + '%',
+            height: slot.h + '%',
+            background: slot.color,
+            opacity: opacity,
+            borderRadius: slot.type === 'circle' ? '9999px' : radius + 'px',
+            border: '1px dashed rgba(255,255,255,0.8)',
+            boxSizing: 'border-box',
+            zIndex: z,
+            cursor: 'move'
+        });
+    }
+
+    let draggedLayerItem = null;
+
+    layerListContainer.on('dragstart', '.layer-item', function (e) {
+        draggedLayerItem = this;
+        $(this).addClass('dragging');
+        e.originalEvent.dataTransfer.effectAllowed = 'move';
+        e.originalEvent.dataTransfer.setData('text/plain', $(this).data('key'));
+    });
+
+    layerListContainer.on('dragover', '.layer-item', function (e) {
+        e.preventDefault();
+        if (!draggedLayerItem || draggedLayerItem === this) return;
+
+        const rect = this.getBoundingClientRect();
+        const isAfter = (e.originalEvent.clientY - rect.top) > (rect.height / 2);
+
+        if (isAfter) {
+            this.parentNode.insertBefore(draggedLayerItem, this.nextSibling);
+        } else {
+            this.parentNode.insertBefore(draggedLayerItem, this);
+        }
+    });
+
+    layerListContainer.on('dragend', '.layer-item', function () {
+        $(this).removeClass('dragging');
+        draggedLayerItem = null;
+        applyLayerOrderFromList();
+    });
+
+    layerListContainer.on('change', '.layer-name-input', function () {
+        const type = $(this).data('type');
+        const index = parseInt($(this).data('index'), 10);
+        setLayerName(type, index, $(this).val());
+
+        if (type === 'text') {
+            const labelEl = workspace.find(`.tpl-text-slot[data-index="${index}"]`);
+            if (labelEl.length) {
+                labelEl.text(textSlots[index].name || defaultTextName(index));
+            }
+            textSettingsContainer.find(`.text-slot-setting[data-index="${index}"] h5`).text(textSlots[index].name || defaultTextName(index));
+        }
+
+        renderLayerManager();
+    });
+
+    function renderShapeSlots() {
+        workspace.find('.tpl-shape-slot').remove();
+        shapeSettingsContainer.empty();
+
+        shapeSlots.forEach((slot, index) => {
+            const safeSlot = Object.assign({
+                type: 'rect',
+                x: 50,
+                y: 50,
+                w: 40,
+                h: 20,
+                color: '#000000',
+                opacity: 0.45,
+                radius: 10,
+                z: 30,
+                name: defaultShapeName(index)
+            }, slot);
+            shapeSlots[index] = safeSlot;
+
+            const el = $('<div class="tpl-shape-slot"></div>').attr('data-index', index);
+            applyShapeStyle(el, safeSlot);
+            workspace.append(el);
+            makeShapeInteractable(el[0]);
+
+            const settingsHtml = `
+                <div class="shape-slot-setting" data-index="${index}" style="background:#fff; border:1px solid #ddd; padding:10px; margin-bottom:10px; border-radius:4px; position:relative;">
+                    <button type="button" class="remove-shape-slot button button-small" style="position:absolute; right:10px; top:10px; color:red; border-color:red;">Törlés</button>
+                    <h5>${safeSlot.name}</h5>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                        <div>
+                            <label>Típus:</label><br>
+                            <select data-field="type">
+                                <option value="rect" ${safeSlot.type === 'rect' ? 'selected' : ''}>Téglalap</option>
+                                <option value="circle" ${safeSlot.type === 'circle' ? 'selected' : ''}>Ovális/Kör</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>X (közép):</label><br>
+                            <input type="number" data-field="x" value="${safeSlot.x}" step="0.1" style="width:70px;"> %
+                        </div>
+                        <div>
+                            <label>Y (közép):</label><br>
+                            <input type="number" data-field="y" value="${safeSlot.y}" step="0.1" style="width:70px;"> %
+                        </div>
+                        <div>
+                            <label>Szélesség:</label><br>
+                            <input type="number" data-field="w" value="${safeSlot.w}" step="0.1" style="width:70px;"> %
+                        </div>
+                        <div>
+                            <label>Magasság:</label><br>
+                            <input type="number" data-field="h" value="${safeSlot.h}" step="0.1" style="width:70px;"> %
+                        </div>
+                        <div>
+                            <label>Szín:</label><br>
+                            <input type="color" data-field="color" value="${safeSlot.color}">
+                        </div>
+                        <div>
+                            <label>Átlátszóság (0-1):</label><br>
+                            <input type="number" data-field="opacity" value="${safeSlot.opacity}" min="0" max="1" step="0.05" style="width:70px;">
+                        </div>
+                        <div>
+                            <label>Sarok lekerekítés:</label><br>
+                            <input type="number" data-field="radius" value="${safeSlot.radius}" min="0" step="1" style="width:70px;"> px
+                        </div>
+                        <div>
+                            <label>Réteg (z-index):</label><br>
+                            <input type="number" data-field="z" value="${safeSlot.z}" step="1" style="width:70px;">
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            shapeSettingsContainer.append(settingsHtml);
+        });
+    }
+
+    function makeTextInteractable(el) {
+        interact(el)
+            .draggable({
+                listeners: {
+                    move(event) {
+                        const target = event.target;
+                        const idx = $(target).data('index');
+                        const parentW = workspace.width();
+                        const parentH = workspace.height();
+
+                        let currX = parseFloat(target.style.left) || 0;
+                        let currY = parseFloat(target.style.top) || 0;
+
+                        currX += (event.dx / parentW) * 100;
+                        currY += (event.dy / parentH) * 100;
+
+                        target.style.left = currX + '%';
+                        target.style.top = currY + '%';
+
+                        textSlots[idx].x = parseFloat(currX.toFixed(1));
+                        textSlots[idx].y = parseFloat(currY.toFixed(1));
+
+                        // Update settings input box
+                        textSettingsContainer.find(`.text-slot-setting[data-index="${idx}"] input[data-field="x"]`).val(textSlots[idx].x);
+                        textSettingsContainer.find(`.text-slot-setting[data-index="${idx}"] input[data-field="y"]`).val(textSlots[idx].y);
+
+                        saveTextSlots();
+                    }
+                },
+                modifiers: [
+                    interact.modifiers.restrictRect({
+                        restriction: 'parent',
+                        endOnly: true
+                    })
+                ]
+            })
+            .resizable({
+                edges: { left: true, right: true },
+                listeners: {
+                    move(event) {
+                        const target = event.target;
+                        const idx = $(target).data('index');
+                        const parentW = workspace.width();
+
+                        let w = (event.rect.width / parentW) * 100;
+                        if (w > 100) w = 100;
+                        if (w < 5) w = 5;
+
+                        target.style.width = w + '%';
+
+                        textSlots[idx].max_w = Math.round(w);
+                        textSettingsContainer.find(`.text-slot-setting[data-index="${idx}"] input[data-field="max_w"]`).val(textSlots[idx].max_w);
+
+                        saveTextSlots();
+                    }
+                }
+            });
+    }
+
+    function makeShapeInteractable(el) {
+        interact(el)
+            .draggable({
+                listeners: {
+                    move(event) {
+                        const target = event.target;
+                        const idx = $(target).data('index');
+                        const parentW = workspace.width();
+                        const parentH = workspace.height();
+
+                        let currX = parseFloat(target.style.left) || 0;
+                        let currY = parseFloat(target.style.top) || 0;
+
+                        currX += (event.dx / parentW) * 100;
+                        currY += (event.dy / parentH) * 100;
+
+                        target.style.left = currX + '%';
+                        target.style.top = currY + '%';
+
+                        shapeSlots[idx].x = parseFloat(currX.toFixed(1));
+                        shapeSlots[idx].y = parseFloat(currY.toFixed(1));
+
+                        shapeSettingsContainer.find(`.shape-slot-setting[data-index="${idx}"] input[data-field="x"]`).val(shapeSlots[idx].x);
+                        shapeSettingsContainer.find(`.shape-slot-setting[data-index="${idx}"] input[data-field="y"]`).val(shapeSlots[idx].y);
+
+                        saveShapeSlots();
+                    }
+                },
+                modifiers: [
+                    interact.modifiers.restrictRect({
+                        restriction: 'parent',
+                        endOnly: true
+                    })
+                ]
+            })
+            .resizable({
+                edges: { left: true, right: true, bottom: true, top: true },
+                listeners: {
+                    move(event) {
+                        const target = event.target;
+                        const idx = $(target).data('index');
+
+                        let x = parseFloat(target.style.left) || 0;
+                        let y = parseFloat(target.style.top) || 0;
+
+                        const parentW = workspace.width();
+                        const parentH = workspace.height();
+
+                        let w = (event.rect.width / parentW) * 100;
+                        let h = (event.rect.height / parentH) * 100;
+                        x += (event.deltaRect.left / parentW) * 100;
+                        y += (event.deltaRect.top / parentH) * 100;
+
+                        if (w < 3) w = 3;
+                        if (h < 3) h = 3;
+
+                        target.style.width = w + '%';
+                        target.style.height = h + '%';
+                        target.style.left = x + '%';
+                        target.style.top = y + '%';
+
+                        shapeSlots[idx].w = parseFloat(w.toFixed(1));
+                        shapeSlots[idx].h = parseFloat(h.toFixed(1));
+                        shapeSlots[idx].x = parseFloat(x.toFixed(1));
+                        shapeSlots[idx].y = parseFloat(y.toFixed(1));
+
+                        shapeSettingsContainer.find(`.shape-slot-setting[data-index="${idx}"] input[data-field="w"]`).val(shapeSlots[idx].w);
+                        shapeSettingsContainer.find(`.shape-slot-setting[data-index="${idx}"] input[data-field="h"]`).val(shapeSlots[idx].h);
+                        shapeSettingsContainer.find(`.shape-slot-setting[data-index="${idx}"] input[data-field="x"]`).val(shapeSlots[idx].x);
+                        shapeSettingsContainer.find(`.shape-slot-setting[data-index="${idx}"] input[data-field="y"]`).val(shapeSlots[idx].y);
+
+                        saveShapeSlots();
+                    }
+                },
+                modifiers: [
+                    interact.modifiers.restrictSize({
+                        min: { width: 20, height: 20 }
+                    }),
+                    interact.modifiers.restrictRect({
+                        restriction: 'parent'
+                    })
+                ]
+            });
+    }
+
+    function updateBackground(url) {
+        const img = new Image();
+        img.src = url;
+        img.onload = function () {
+            const aspect = img.width / img.height;
+            const maxWidth = 800;
+            const w = maxWidth;
+            const h = maxWidth / aspect;
+
+            workspace.css({
+                width: w + 'px',
+                height: h + 'px',
+                backgroundImage: 'url(' + url + ')',
+                backgroundSize: '100% 100%'
+            });
+            renderSlots();
+            renderShapeSlots();
+            renderTextSlots();
+            renderLayerManager();
+        };
+    }
+
+    function renderSlots() {
+        workspace.find('.tpl-slot').not('#tpl-text').remove();
+        slots.forEach((slot, index) => {
+            if (typeof slot.z !== 'number') {
+                slot.z = 10;
+            }
+            if (!slot.name) {
+                slot.name = defaultImageName(index);
+            }
+            const el = $('<div class="tpl-slot">').attr('data-index', index);
+            el.text(index + 1);
+            el.append('<span class="remove-slot">×</span>');
+
+            el.css({
+                left: slot.x + '%',
+                top: slot.y + '%',
+                width: slot.w + '%',
+                height: slot.h + '%',
+                zIndex: slot.z
+            });
+
+            workspace.append(el);
+            makeInteractable(el[0]);
+        });
+    }
+
+    function makeInteractable(el) {
+        interact(el)
+            .draggable({
+                listeners: {
+                    move(event) {
+                        const target = event.target;
+                        const idx = $(target).attr('data-index');
+
+                        let x = parseFloat(target.style.left) || 0;
+                        let y = parseFloat(target.style.top) || 0;
+
+                        const parentW = workspace.width();
+                        const parentH = workspace.height();
+
+                        x += (event.dx / parentW) * 100;
+                        y += (event.dy / parentH) * 100;
+
+                        target.style.left = x + '%';
+                        target.style.top = y + '%';
+
+                        slots[idx].x = x;
+                        slots[idx].y = y;
+                        save();
+                    },
+                },
+                modifiers: [
+                    interact.modifiers.restrictRect({
+                        restriction: 'parent',
+                        endOnly: true
+                    })
+                ]
+            })
+            .resizable({
+                edges: { left: true, right: true, bottom: true, top: true },
+                listeners: {
+                    move(event) {
+                        const target = event.target;
+                        const idx = $(target).attr('data-index');
+
+                        let x = parseFloat(target.style.left) || 0;
+                        let y = parseFloat(target.style.top) || 0;
+
+                        const parentW = workspace.width();
+                        const parentH = workspace.height();
+
+                        let w = (event.rect.width / parentW) * 100;
+                        let h = (event.rect.height / parentH) * 100;
+                        x += (event.deltaRect.left / parentW) * 100;
+                        y += (event.deltaRect.top / parentH) * 100;
+
+                        target.style.width = w + '%';
+                        target.style.height = h + '%';
+                        target.style.left = x + '%';
+                        target.style.top = y + '%';
+
+                        slots[idx].w = w;
+                        slots[idx].h = h;
+                        slots[idx].x = x;
+                        slots[idx].y = y;
+                        save();
+                    }
+                },
+                modifiers: [
+                    interact.modifiers.restrictSize({
+                        min: { width: 20, height: 20 }
+                    }),
+                    interact.modifiers.restrictRect({
+                        restriction: 'parent'
+                    })
+                ]
+            });
+    }
+
+    function save() {
+        slotsInput.val(JSON.stringify(slots));
+    }
+
+    addBtn.on('click', function () {
+        slots.push({ x: 10, y: 10, w: 20, h: 20, z: 10, name: defaultImageName(slots.length) });
+        renderSlots();
+        renderLayerManager();
+        save();
+    });
+
+    workspace.on('click', '.remove-slot', function (e) {
+        e.stopPropagation();
+        const idx = $(this).parent().attr('data-index');
+        slots.splice(idx, 1);
+        renderSlots();
+        renderLayerManager();
+        save();
+    });
+
+    // --- Perspective Mockup Logic ---
+    const corners = ['tl', 'tr', 'bl', 'br'];
+    corners.forEach(c => {
+        workspace.append(`<div class="mockup-handle" data-corner="${c}" style="display:none;"></div>`);
+    });
+    workspace.append('<canvas id="mockup-preview-canvas" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:50; opacity: 0.85;"></canvas>');
+
+    let currentMockupIndex = null;
+    let templateBgImg = null;
+
+    if (photowooshop_admin_vars.bg_url) {
+        templateBgImg = new Image();
+        templateBgImg.crossOrigin = "anonymous";
+        templateBgImg.src = photowooshop_admin_vars.bg_url;
+    }
+
+    $('.mockup-visual-btn').on('click', function () {
+        const idx = $(this).data('index');
+        const url = $('#m_url_' + idx).val();
+
+        if (!url) {
+            alert('Kérlek előbb adj meg egy háttérképet a mockupnak!');
+            return;
+        }
+
+        currentMockupIndex = idx;
+        $('.tpl-slot, .tpl-shape-slot, .tpl-text-slot, #tpl-text').hide();
+        $('.mockup-visual-btn').text('Perspektíva beállítás').css('background', '#007cba');
+        $(this).text('Szerkesztés alatt...').css('background', '#ff5722');
+
+        updateMockupBackground(url, idx);
+    });
+
+    function updateMockupBackground(url, idx) {
+        const img = new Image();
+        img.src = url;
+        img.onload = function () {
+            const aspect = img.width / img.height;
+            const maxWidth = 800;
+            const w = maxWidth;
+            const h = maxWidth / aspect;
+
+            workspace.css({
+                width: w + 'px',
+                height: h + 'px',
+                backgroundImage: 'url(' + url + ')',
+                backgroundSize: '100% 100%'
+            });
+
+            showPerspectiveHandles(idx);
+        };
+    }
+
+    function showPerspectiveHandles(idx) {
+        $('.mockup-handle, #mockup-preview-canvas').show();
+
+        corners.forEach(c => {
+            const val = $('#m_' + c + '_' + idx).val() || (c === 'tl' ? '10,10' : (c === 'tr' ? '90,10' : (c === 'bl' ? '10,90' : '90,90')));
+            const [x, y] = val.split(',').map(parseFloat);
+            $(`.mockup-handle[data-corner="${c}"]`).css({
+                left: x + '%',
+                top: y + '%'
+            });
+        });
+
+        updatePerspectiveOverlay();
+        initPerspectiveInteract();
+    }
+
+    function updatePerspectiveOverlay() {
+        if (!templateBgImg || !templateBgImg.complete) return;
+
+        const parentW = workspace.width();
+        const parentH = workspace.height();
+
+        const canvas = document.getElementById('mockup-preview-canvas');
+        canvas.width = parentW;
+        canvas.height = parentH;
+
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, parentW, parentH);
+
+        const pts = {};
+        corners.forEach(c => {
+            const h = $(`.mockup-handle[data-corner="${c}"]`);
+            pts[c] = [
+                (parseFloat(h[0].style.left) / 100) * parentW,
+                (parseFloat(h[0].style.top) / 100) * parentH
+            ];
+        });
+
+        drawPerspective(ctx, templateBgImg, pts.tl, pts.tr, pts.br, pts.bl);
+
+        // Draw an outline around the warped area for visibility
+        ctx.strokeStyle = "#ff5722";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pts.tl[0], pts.tl[1]);
+        ctx.lineTo(pts.tr[0], pts.tr[1]);
+        ctx.lineTo(pts.br[0], pts.br[1]);
+        ctx.lineTo(pts.bl[0], pts.bl[1]);
+        ctx.closePath();
+        ctx.stroke();
+    }
+
+    function drawPerspective(ctx, img, tl, tr, br, bl) {
+        const steps = 10; // Lower resolution for real-time admin preview
+        const width = img.width;
+        const height = img.height;
+
+        for (let y = 0; y < steps; y++) {
+            for (let x = 0; x < steps; x++) {
+                const x1 = x / steps;
+                const y1 = y / steps;
+                const x2 = (x + 1) / steps;
+                const y2 = (y + 1) / steps;
+
+                const p1 = lerpQuad(tl, tr, br, bl, x1, y1);
+                const p2 = lerpQuad(tl, tr, br, bl, x2, y1);
+                const p3 = lerpQuad(tl, tr, br, bl, x2, y2);
+                const p4 = lerpQuad(tl, tr, br, bl, x1, y2);
+
+                drawTriangle(ctx, img,
+                    x1 * width, y1 * height,
+                    x2 * width, y1 * height,
+                    x1 * width, y2 * height,
+                    p1[0], p1[1], p2[0], p2[1], p4[0], p4[1]);
+
+                drawTriangle(ctx, img,
+                    x2 * width, y1 * height,
+                    x2 * width, y2 * height,
+                    x1 * width, y2 * height,
+                    p2[0], p2[1], p3[0], p3[1], p4[0], p4[1]);
+            }
+        }
+    }
+
+    function lerpQuad(tl, tr, br, bl, u, v) {
+        const top = [tl[0] + (tr[0] - tl[0]) * u, tl[1] + (tr[1] - tl[1]) * u];
+        const bottom = [bl[0] + (br[0] - bl[0]) * u, bl[1] + (br[1] - bl[1]) * u];
+        return [top[0] + (bottom[0] - top[0]) * v, top[1] + (bottom[1] - top[1]) * v];
+    }
+
+    function drawTriangle(ctx, img, u0, v0, u1, v1, u2, v2, x0, y0, x1, y1, x2, y2) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.closePath();
+        ctx.clip();
+
+        const delta = u0 * v1 + v0 * u2 + u1 * v2 - v1 * u2 - v0 * u1 - u0 * v2;
+        if (delta === 0) { ctx.restore(); return; }
+
+        const deltaA = x0 * v1 + v0 * x2 + x1 * v2 - v1 * x2 - v0 * x1 - x0 * v2;
+        const deltaB = u0 * x1 + x0 * u2 + u1 * x2 - x1 * u2 - x0 * u1 - u0 * x2;
+        const deltaC = u0 * v1 * x2 + v0 * x1 * u2 + x0 * u1 * v2 - x0 * v1 * u2 - v0 * u1 * x2 - u0 * x1 * v2;
+        const deltaD = y0 * v1 + v0 * y2 + y1 * v2 - v1 * y2 - v0 * y1 - y0 * v2;
+        const deltaE = u0 * y1 + y0 * u2 + u1 * y2 - y1 * u2 - y0 * u1 - u0 * y2;
+        const deltaF = u0 * v1 * y2 + v0 * y1 * u2 + y0 * u1 * v2 - y0 * v1 * u2 - v0 * u1 * y2 - u0 * y1 * v2;
+
+        ctx.transform(
+            deltaA / delta, deltaD / delta,
+            deltaB / delta, deltaE / delta,
+            deltaC / delta, deltaF / delta
+        );
+        ctx.drawImage(img, 0, 0);
+        ctx.restore();
+    }
+
+    function initPerspectiveInteract() {
+        interact('.mockup-handle')
+            .draggable({
+                listeners: {
+                    move(event) {
+                        const target = event.target;
+                        const corner = $(target).data('corner');
+                        const parentW = workspace.width();
+                        const parentH = workspace.height();
+
+                        let x = parseFloat(target.style.left) || 0;
+                        let y = parseFloat(target.style.top) || 0;
+
+                        x += (event.dx / parentW) * 100;
+                        y += (event.dy / parentH) * 100;
+
+                        target.style.left = x + '%';
+                        target.style.top = y + '%';
+
+                        $('#m_' + corner + '_' + currentMockupIndex).val(`${x.toFixed(1)},${y.toFixed(1)}`);
+                        updatePerspectiveOverlay();
+                    }
+                }
+            });
+    }
+
+    bgInput.on('change', function () {
+        currentMockupIndex = null;
+        $('.tpl-slot, .tpl-shape-slot, .tpl-text-slot, #tpl-text').show();
+        $('.mockup-handle, #mockup-preview-canvas').hide();
+        $('.mockup-visual-btn').text('Perspektíva beállítás').css('background', '#007cba');
+        updateBackground($(this).val());
+    });
+
+    $('body').on('click', '.photowooshop-browse-media', function (e) {
+        e.preventDefault();
+        var uploader = wp.media({
+            title: 'Háttérkép kiválasztása',
+            button: { text: 'Kijelölés' },
+            multiple: false
+        }).on('select', function () {
+            var attachment = uploader.state().get('selection').first().toJSON();
+            bgInput.val(attachment.url).trigger('change');
+        }).open();
+    });
+
+    $('body').on('click', '.photowooshop-browse-mockup', function (e) {
+        e.preventDefault();
+        const targetId = $(this).data('target');
+        var uploader = wp.media({
+            title: 'Mockup háttér kiválasztása',
+            button: { text: 'Kijelölés' },
+            multiple: false
+        }).on('select', function () {
+            var attachment = uploader.state().get('selection').first().toJSON();
+            $('#' + targetId).val(attachment.url);
+        }).open();
+    });
+
+    init();
+});
