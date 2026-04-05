@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/gaborknippl/photowooshop
  * Update URI:  https://github.com/gaborknippl/photowooshop
  * Description: Teljesen egyedi, 6 fotós montázs készítő WooCommerce termékekhez.
- * Version:     1.1.39
+ * Version:     1.1.40
  * Author:      Flodesign
  * Author URI:  https://www.flodesign.hu
  * Text Domain: photowooshop
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class Photowooshop
 {
     private static $instance = null;
-    const PLUGIN_VERSION = '1.1.39';
+    const PLUGIN_VERSION = '1.1.40';
     const VERSION_OPTION = 'photowooshop_plugin_version';
     const UPLOAD_SUBDIR = 'photowooshop';
     const IMAGE_UPLOAD_MAX_BYTES = 12582912; // 12 MB
@@ -168,10 +168,7 @@ class Photowooshop
 
         $response = wp_remote_get(self::GITHUB_LATEST_RELEASE_API, array(
             'timeout' => 15,
-            'headers' => array(
-                'Accept' => 'application/vnd.github+json',
-                'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . home_url('/'),
-            ),
+            'headers' => $this->build_github_request_headers(),
         ));
 
         $release_data = null;
@@ -195,10 +192,7 @@ class Photowooshop
         if (empty($release_data)) {
             $tags_response = wp_remote_get(self::GITHUB_TAGS_API, array(
                 'timeout' => 15,
-                'headers' => array(
-                    'Accept' => 'application/vnd.github+json',
-                    'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . home_url('/'),
-                ),
+                'headers' => $this->build_github_request_headers(),
             ));
 
             if (!is_wp_error($tags_response) && (int) wp_remote_retrieve_response_code($tags_response) === 200) {
@@ -314,6 +308,21 @@ class Photowooshop
         return is_string($token) ? trim($token) : '';
     }
 
+    private function build_github_request_headers()
+    {
+        $headers = array(
+            'Accept' => 'application/vnd.github+json',
+            'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . home_url('/'),
+        );
+
+        $token = $this->get_github_token();
+        if ($token !== '') {
+            $headers['Authorization'] = 'Bearer ' . $token;
+        }
+
+        return $headers;
+    }
+
     public function download_github_package_with_auth($reply, $package, $upgrader, $hook_extra)
     {
         if (!is_string($package) || $package === '') {
@@ -340,11 +349,7 @@ class Photowooshop
             'redirection' => 5,
             'stream' => true,
             'filename' => $tmp_file,
-            'headers' => array(
-                'Accept' => 'application/vnd.github+json',
-                'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . home_url('/'),
-                'Authorization' => 'Bearer ' . $token,
-            ),
+            'headers' => $this->build_github_request_headers(),
         ));
 
         if (is_wp_error($response)) {
@@ -842,6 +847,9 @@ class Photowooshop
         register_setting('photowooshop_settings_group', self::SAFE_MODE_OPTION, array(
             'sanitize_callback' => array($this, 'sanitize_checkbox_setting')
         ));
+        register_setting('photowooshop_settings_group', 'photowooshop_github_token', array(
+            'sanitize_callback' => 'sanitize_text_field'
+        ));
     }
 
     public function sanitize_checkbox_setting($value)
@@ -1190,6 +1198,7 @@ class Photowooshop
         $audio_consent_enabled = get_option('photowooshop_audio_consent_enabled', 'yes');
         $audio_consent_text = $this->get_audio_consent_text();
         $safe_mode_enabled = get_option(self::SAFE_MODE_OPTION, 'yes');
+        $github_token = get_option('photowooshop_github_token', '');
         $cleanup_report = get_option(self::CLEANUP_REPORT_OPTION, array());
         $migration_report = get_option(self::MIGRATION_REPORT_OPTION, array());
         $index_report = get_option(self::INDEX_REPORT_OPTION, array());
@@ -1295,6 +1304,13 @@ class Photowooshop
                                 <input type="checkbox" name="<?php echo esc_attr(self::SAFE_MODE_OPTION); ?>" value="yes" <?php checked($safe_mode_enabled, 'yes'); ?>>
                                 Stabilabb, korlátozott lekérdezési mód az admin anyaglistán
                             </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">GitHub token (frissítéshez)</th>
+                        <td>
+                            <input type="password" name="photowooshop_github_token" value="<?php echo esc_attr($github_token); ?>" class="regular-text" autocomplete="off">
+                            <p class="description">Adj meg egy GitHub Personal Access Tokent legalább repository olvasási jogosultsággal. Ez megoldja az API limit és csomag letöltési hibákat.</p>
                         </td>
                     </tr>
                 </table>
@@ -1565,7 +1581,7 @@ class Photowooshop
             <h1>Photowooshop Verziókövetés</h1>
             <p style="max-width:900px;">Gyors changelog kivonat a stabilitási és admin fejlesztésekről.</p>
 
-            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.39)</h2>
+            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.40)</h2>
             <table class="widefat striped" style="max-width: 760px;">
                 <tbody>
                     <tr><td><strong>1.1.17</strong></td><td>Anyaglista teljesítmény hotfix (500 hiba csökkentése).</td></tr>
@@ -1591,6 +1607,7 @@ class Photowooshop
                     <tr><td><strong>1.1.37</strong></td><td>Rétegpanel: új kuka ikonos törlés gomb minden rétegtípushoz.</td></tr>
                     <tr><td><strong>1.1.38</strong></td><td>GitHub update csomag: tokenes hitelesített letöltés támogatás (privát repo kompatibilitás).</td></tr>
                     <tr><td><strong>1.1.39</strong></td><td>Frissítési folyamat ellenőrző kiadás a telepíthetőség validálására.</td></tr>
+                    <tr><td><strong>1.1.40</strong></td><td>GitHub token beállítás közvetlenül a Beállítások oldalon + tokenes API hívások minden update ellenőrzéshez.</td></tr>
                 </tbody>
             </table>
         </div>
