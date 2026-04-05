@@ -705,6 +705,15 @@ class Photowooshop
             array($this, 'settings_page_html')
         );
 
+        add_submenu_page(
+            'photowooshop-main',
+            'Súgó',
+            'Súgó',
+            'manage_options',
+            'photowooshop-help',
+            array($this, 'help_page_html')
+        );
+
         // Hide the automatic duplicate first submenu entry (Photowooshop -> Photowooshop).
         remove_submenu_page('photowooshop-main', 'photowooshop-main');
     }
@@ -1316,6 +1325,79 @@ class Photowooshop
                 <li>Cleanup és migráció report ellenőrzése.</li>
                 <li>Csak ezután élesítés, rollback tervvel.</li>
             </ol>
+        </div>
+        <?php
+    }
+
+    public function help_page_html()
+    {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        ?>
+        <div class="wrap">
+            <h1>Photowooshop Súgó</h1>
+            <p style="max-width:900px;">Ezen az oldalon a Photowooshop plugin használatának legfontosabb lépéseit találja. A folyamat célja, hogy a vásárló egyszeruen testreszabható montázst készítsen, az admin pedig gyorsan kezelje a beérkezett anyagokat.</p>
+
+            <h2>1. Gyors indulás</h2>
+            <ol style="max-width:900px;">
+                <li>Nyissa meg a <strong>Photowooshop -> Beállítások</strong> oldalt és állítsa be az alap opciókat.</li>
+                <li>Hozzon létre sablont a <strong>Montázs Sablonok</strong> menüpontban.</li>
+                <li>A terméknél kapcsolja be a Photowooshopot és válassza ki a sablont.</li>
+                <li>Ellenőrizze egy próbarendeléssel a szerkesztési és mentési folyamatot.</li>
+            </ol>
+
+            <h2>2. Sablon készítés (admin)</h2>
+            <ul style="max-width:900px; list-style:disc; padding-left:20px;">
+                <li>Adjon meg háttérképet a sablonhoz.</li>
+                <li>Vegyen fel <strong>Képhely</strong>, <strong>Szöveg</strong> és <strong>Alakzat</strong> rétegeket.</li>
+                <li>A <strong>Rétegek</strong> panelben a rétegre kattintva lenyílik az összes beállítás.</li>
+                <li>A rétegek drag-and-drop módban rendezhetők, a z-index automatikusan frissül.</li>
+                <li>Képhelyeknél külön saroklekerekítés is állítható (bal felső, jobb felső, jobb alsó, bal alsó).</li>
+            </ul>
+
+            <h2>3. Termék beállítása</h2>
+            <ul style="max-width:900px; list-style:disc; padding-left:20px;">
+                <li><strong>Photowooshop Montázs Engedélyezése:</strong> kapcsolja be.</li>
+                <li><strong>Választott Sablon:</strong> válassza ki az előbb létrehozott sablont.</li>
+                <li><strong>Hangfájl Feltöltés:</strong> opcionálisan bekapcsolható.</li>
+            </ul>
+
+            <h2>4. Vásárlói folyamat</h2>
+            <ol style="max-width:900px;">
+                <li>A termékoldalon a vásárló megnyitja a szerkesztőt.</li>
+                <li>Feltölti a képeket, megadja a szövegeket, szükség esetén hangfájlt csatol.</li>
+                <li>A szerkesztés befejezése után kosárba teszi a testreszabott terméket.</li>
+            </ol>
+
+            <h2>5. Rendelés anyagainak kezelése</h2>
+            <ul style="max-width:900px; list-style:disc; padding-left:20px;">
+                <li><strong>Photowooshop -> Rendelés anyagai</strong> oldalon listázva láthatók a rendelési anyagok.</li>
+                <li>Lehetőségek: megtekintés, ZIP letöltés, javítás, törlés.</li>
+                <li>Ha anyag nem található, használja a javítási funkciót (egyedi vagy globális).</li>
+            </ul>
+
+            <h2>6. Karbantartás és stabilitás</h2>
+            <ul style="max-width:900px; list-style:disc; padding-left:20px;">
+                <li><strong>Safe mode:</strong> nagy terhelés esetén stabilabb admin lista működést ad.</li>
+                <li><strong>Index újraépítés:</strong> az anyaglista gyorsításához és pontosításához.</li>
+                <li><strong>Globális javítás:</strong> migráció utáni URL/meta problémák javítására.</li>
+                <li><strong>Smoke teszt:</strong> gyors állapotellenőrzés kiadás előtt.</li>
+            </ul>
+
+            <h2>7. Frissítés és visszaállítás</h2>
+            <ul style="max-width:900px; list-style:disc; padding-left:20px;">
+                <li>A plugin GitHub verziókövetést használ.</li>
+                <li>WordPress frissítés ellenőrzés elsődlegesen Release, másodlagosan Tag alapján működik.</li>
+                <li>Rollback esetén célszeru stabil tagre visszaállni.</li>
+            </ul>
+
+            <h2>8. Hibakeresési tippek</h2>
+            <ul style="max-width:900px; list-style:disc; padding-left:20px;">
+                <li>Ha a lista lassú vagy hibás: kapcsolja be a Safe mode-ot, majd futtasson Index újraépítést.</li>
+                <li>Ha anyagok hiányoznak: futtasson Javítás műveletet az érintett rendelésen.</li>
+                <li>Ha továbbra is gond van: nézze át a Beállítások oldalon a diagnosztikai blokkokat.</li>
+            </ul>
         </div>
         <?php
     }
