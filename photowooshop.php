@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/gaborknippl/photowooshop
  * Update URI:  https://github.com/gaborknippl/photowooshop
  * Description: Teljesen egyedi, 6 fotós montázs készítő WooCommerce termékekhez.
- * Version:     1.1.44
+ * Version:     1.1.45
  * Author:      Flodesign
  * Author URI:  https://www.flodesign.hu
  * Text Domain: photowooshop
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class Photowooshop
 {
     private static $instance = null;
-    const PLUGIN_VERSION = '1.1.44';
+    const PLUGIN_VERSION = '1.1.45';
     const VERSION_OPTION = 'photowooshop_plugin_version';
     const UPLOAD_SUBDIR = 'photowooshop';
     const IMAGE_UPLOAD_MAX_BYTES = 12582912; // 12 MB
@@ -401,7 +401,18 @@ class Photowooshop
 
     public function fix_github_upgrader_source_dir($source, $remote_source, $upgrader, $hook_extra)
     {
-        if (empty($hook_extra['plugin']) || $hook_extra['plugin'] !== plugin_basename(__FILE__)) {
+        $plugin_basename = plugin_basename(__FILE__);
+        $is_target_plugin = false;
+
+        if (!empty($hook_extra['plugin']) && $hook_extra['plugin'] === $plugin_basename) {
+            $is_target_plugin = true;
+        }
+
+        if (!$is_target_plugin && !empty($hook_extra['plugins']) && is_array($hook_extra['plugins'])) {
+            $is_target_plugin = in_array($plugin_basename, $hook_extra['plugins'], true);
+        }
+
+        if (!$is_target_plugin) {
             return $source;
         }
 
@@ -418,8 +429,8 @@ class Photowooshop
             return $source;
         }
 
-        $expected = trailingslashit($remote_source) . dirname(plugin_basename(__FILE__));
-        if ($source === $expected) {
+        $expected = trailingslashit($remote_source) . dirname($plugin_basename);
+        if (untrailingslashit($source) === untrailingslashit($expected)) {
             return $source;
         }
 
@@ -428,7 +439,18 @@ class Photowooshop
         }
 
         $moved = $wp_filesystem->move($source, $expected, true);
-        return $moved ? $expected : $source;
+        if ($moved) {
+            return $expected;
+        }
+
+        // Some filesystem drivers cannot move across temp mount points.
+        $copied = copy_dir($source, $expected);
+        if (is_wp_error($copied)) {
+            return $source;
+        }
+
+        $wp_filesystem->delete($source, true);
+        return $expected;
     }
 
     public function add_product_settings_field()
@@ -1581,7 +1603,7 @@ class Photowooshop
             <h1>Photowooshop Verziókövetés</h1>
             <p style="max-width:900px;">Gyors changelog kivonat a stabilitási és admin fejlesztésekről.</p>
 
-            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.44)</h2>
+            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.45)</h2>
             <table class="widefat striped" style="max-width: 760px;">
                 <tbody>
                     <tr><td><strong>1.1.17</strong></td><td>Anyaglista teljesítmény hotfix (500 hiba csökkentése).</td></tr>
@@ -1612,6 +1634,7 @@ class Photowooshop
                     <tr><td><strong>1.1.42</strong></td><td>Tesztkiadás a frissítési folyamat újbóli ellenőrzéséhez.</td></tr>
                     <tr><td><strong>1.1.43</strong></td><td>Frissítési csomag URL átállítva közvetlen publikus archive zip letöltésre.</td></tr>
                     <tr><td><strong>1.1.44</strong></td><td>Tesztkiadás az 1.1.43 telepítési útvonal validálásához.</td></tr>
+                    <tr><td><strong>1.1.45</strong></td><td>Frissítő mappaátnevezés javítás: bulk update támogatás és move/copy fallback.</td></tr>
                 </tbody>
             </table>
         </div>
