@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/gaborknippl/photowooshop
  * Update URI:  https://github.com/gaborknippl/photowooshop
  * Description: Teljesen egyedi, 6 fotós montázs készítő WooCommerce termékekhez.
- * Version:     1.1.43
+ * Version:     1.1.44
  * Author:      Flodesign
  * Author URI:  https://www.flodesign.hu
  * Text Domain: photowooshop
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class Photowooshop
 {
     private static $instance = null;
-    const PLUGIN_VERSION = '1.1.43';
+    const PLUGIN_VERSION = '1.1.44';
     const VERSION_OPTION = 'photowooshop_plugin_version';
     const UPLOAD_SUBDIR = 'photowooshop';
     const IMAGE_UPLOAD_MAX_BYTES = 12582912; // 12 MB
@@ -1581,7 +1581,7 @@ class Photowooshop
             <h1>Photowooshop Verziókövetés</h1>
             <p style="max-width:900px;">Gyors changelog kivonat a stabilitási és admin fejlesztésekről.</p>
 
-            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.43)</h2>
+            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.44)</h2>
             <table class="widefat striped" style="max-width: 760px;">
                 <tbody>
                     <tr><td><strong>1.1.17</strong></td><td>Anyaglista teljesítmény hotfix (500 hiba csökkentése).</td></tr>
@@ -1611,6 +1611,7 @@ class Photowooshop
                     <tr><td><strong>1.1.41</strong></td><td>Felhasználói felületen és dokumentációban a technikai háttérmegnevezések elrejtése.</td></tr>
                     <tr><td><strong>1.1.42</strong></td><td>Tesztkiadás a frissítési folyamat újbóli ellenőrzéséhez.</td></tr>
                     <tr><td><strong>1.1.43</strong></td><td>Frissítési csomag URL átállítva közvetlen publikus archive zip letöltésre.</td></tr>
+                    <tr><td><strong>1.1.44</strong></td><td>Tesztkiadás az 1.1.43 telepítési útvonal validálásához.</td></tr>
                 </tbody>
             </table>
         </div>
