@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/gaborknippl/photowooshop
  * Update URI:  https://github.com/gaborknippl/photowooshop
  * Description: Teljesen egyedi, 6 fotós montázs készítő WooCommerce termékekhez.
- * Version:     1.1.45
+ * Version:     1.1.46
  * Author:      Flodesign
  * Author URI:  https://www.flodesign.hu
  * Text Domain: photowooshop
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class Photowooshop
 {
     private static $instance = null;
-    const PLUGIN_VERSION = '1.1.45';
+    const PLUGIN_VERSION = '1.1.46';
     const VERSION_OPTION = 'photowooshop_plugin_version';
     const UPLOAD_SUBDIR = 'photowooshop';
     const IMAGE_UPLOAD_MAX_BYTES = 12582912; // 12 MB
@@ -176,10 +176,11 @@ class Photowooshop
             $payload = json_decode(wp_remote_retrieve_body($response), true);
             if (is_array($payload) && !empty($payload['tag_name'])) {
                 $tag = (string) $payload['tag_name'];
+                $package_url = $this->pick_release_package_url($payload, $tag);
                 $release_data = array(
                     'version' => ltrim($tag, 'vV'),
                     'tag' => $tag,
-                    'zipball_url' => $this->build_tag_zip_url($tag),
+                    'zipball_url' => $package_url,
                     'html_url' => isset($payload['html_url']) ? (string) $payload['html_url'] : ('https://github.com/' . self::GITHUB_REPOSITORY),
                     'published_at' => isset($payload['published_at']) ? (string) $payload['published_at'] : '',
                     'body' => isset($payload['body']) ? (string) $payload['body'] : '',
@@ -296,6 +297,27 @@ class Photowooshop
     {
         $safe_tag = rawurlencode((string) $tag);
         return 'https://github.com/' . self::GITHUB_REPOSITORY . '/archive/refs/tags/' . $safe_tag . '.zip';
+    }
+
+    private function pick_release_package_url($payload, $tag)
+    {
+        if (!empty($payload['assets']) && is_array($payload['assets'])) {
+            foreach ($payload['assets'] as $asset) {
+                if (!is_array($asset) || empty($asset['browser_download_url'])) {
+                    continue;
+                }
+                $url = (string) $asset['browser_download_url'];
+                if (preg_match('/\.zip($|\?)/i', $url)) {
+                    return $url;
+                }
+            }
+        }
+
+        if (!empty($payload['zipball_url'])) {
+            return (string) $payload['zipball_url'];
+        }
+
+        return $this->build_tag_zip_url($tag);
     }
 
     private function get_github_token()
@@ -1603,7 +1625,7 @@ class Photowooshop
             <h1>Photowooshop Verziókövetés</h1>
             <p style="max-width:900px;">Gyors changelog kivonat a stabilitási és admin fejlesztésekről.</p>
 
-            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.45)</h2>
+            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.46)</h2>
             <table class="widefat striped" style="max-width: 760px;">
                 <tbody>
                     <tr><td><strong>1.1.17</strong></td><td>Anyaglista teljesítmény hotfix (500 hiba csökkentése).</td></tr>
@@ -1635,6 +1657,7 @@ class Photowooshop
                     <tr><td><strong>1.1.43</strong></td><td>Frissítési csomag URL átállítva közvetlen publikus archive zip letöltésre.</td></tr>
                     <tr><td><strong>1.1.44</strong></td><td>Tesztkiadás az 1.1.43 telepítési útvonal validálásához.</td></tr>
                     <tr><td><strong>1.1.45</strong></td><td>Frissítő mappaátnevezés javítás: bulk update támogatás és move/copy fallback.</td></tr>
+                    <tr><td><strong>1.1.46</strong></td><td>Kiadás letöltés: elsődlegesen release ZIP asset használata a stabil telepítéshez.</td></tr>
                 </tbody>
             </table>
         </div>
