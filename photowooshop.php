@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/gaborknippl/photowooshop
  * Update URI:  https://github.com/gaborknippl/photowooshop
  * Description: Teljesen egyedi, 6 fotós montázs készítő WooCommerce termékekhez.
- * Version:     1.1.38
+ * Version:     1.1.39
  * Author:      Flodesign
  * Author URI:  https://www.flodesign.hu
  * Text Domain: photowooshop
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class Photowooshop
 {
     private static $instance = null;
-    const PLUGIN_VERSION = '1.1.38';
+    const PLUGIN_VERSION = '1.1.39';
     const VERSION_OPTION = 'photowooshop_plugin_version';
     const UPLOAD_SUBDIR = 'photowooshop';
     const IMAGE_UPLOAD_MAX_BYTES = 12582912; // 12 MB
@@ -1565,7 +1565,7 @@ class Photowooshop
             <h1>Photowooshop Verziókövetés</h1>
             <p style="max-width:900px;">Gyors changelog kivonat a stabilitási és admin fejlesztésekről.</p>
 
-            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.38)</h2>
+            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.39)</h2>
             <table class="widefat striped" style="max-width: 760px;">
                 <tbody>
                     <tr><td><strong>1.1.17</strong></td><td>Anyaglista teljesítmény hotfix (500 hiba csökkentése).</td></tr>
@@ -1590,6 +1590,7 @@ class Photowooshop
                     <tr><td><strong>1.1.36</strong></td><td>Csomag letöltési URL átváltás codeload végpontra.</td></tr>
                     <tr><td><strong>1.1.37</strong></td><td>Rétegpanel: új kuka ikonos törlés gomb minden rétegtípushoz.</td></tr>
                     <tr><td><strong>1.1.38</strong></td><td>GitHub update csomag: tokenes hitelesített letöltés támogatás (privát repo kompatibilitás).</td></tr>
+                    <tr><td><strong>1.1.39</strong></td><td>Frissítési folyamat ellenőrző kiadás a telepíthetőség validálására.</td></tr>
                 </tbody>
             </table>
         </div>
