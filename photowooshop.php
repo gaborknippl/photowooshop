@@ -516,15 +516,31 @@ class Photowooshop
             }
 
             #tpl-layer-panel .layer-item {
-                display: flex;
-                align-items: center;
-                gap: 8px;
+                display: block;
                 padding: 8px;
                 border: 1px solid #e7e7e7;
                 border-radius: 6px;
                 margin-bottom: 8px;
                 background: #fafafa;
                 cursor: grab;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            #tpl-layer-panel .layer-item-header {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            #tpl-layer-panel .layer-item-body {
+                margin-top: 10px;
+                padding-top: 10px;
+                border-top: 1px solid #ececec;
+                width: 100%;
+                box-sizing: border-box;
             }
 
             #tpl-layer-panel .layer-item.dragging {

@@ -218,17 +218,21 @@ jQuery(document).ready(function ($) {
         const radii = getImageSlotCornerRadii(slot, 10);
         const unified = getUnifiedRadiusValue(radii);
         return `
-            <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px 12px;">
-                <div><label>X:</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="x" type="number" step="0.1" value="${slot.x}"> %</div>
-                <div><label>Y:</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="y" type="number" step="0.1" value="${slot.y}"> %</div>
-                <div><label>Szélesség:</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="w" type="number" step="0.1" value="${slot.w}"> %</div>
-                <div><label>Magasság:</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="h" type="number" step="0.1" value="${slot.h}"> %</div>
-                <div><label>Összes sarok:</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="radius" type="number" min="0" step="1" value="${unified}" placeholder="külön értékek"> px</div>
-                <div><label>Réteg (z):</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="z" type="number" step="1" value="${slot.z}"></div>
-                <div><label>Bal felső:</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="radius_tl" type="number" min="0" step="1" value="${radii.tl}"> px</div>
-                <div><label>Jobb felső:</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="radius_tr" type="number" min="0" step="1" value="${radii.tr}"> px</div>
-                <div><label>Jobb alsó:</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="radius_br" type="number" min="0" step="1" value="${radii.br}"> px</div>
-                <div><label>Bal alsó:</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="radius_bl" type="number" min="0" step="1" value="${radii.bl}"> px</div>
+            <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px 12px; align-items:start;">
+                <div style="grid-column:1 / -1; font-size:11px; color:#666; font-weight:600;">Pozíció és méret</div>
+                <div><label>X (%)</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="x" type="number" step="0.1" value="${slot.x}" style="width:100%;"></div>
+                <div><label>Y (%)</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="y" type="number" step="0.1" value="${slot.y}" style="width:100%;"></div>
+                <div><label>Szélesség (%)</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="w" type="number" step="0.1" value="${slot.w}" style="width:100%;"></div>
+                <div><label>Magasság (%)</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="h" type="number" step="0.1" value="${slot.h}" style="width:100%;"></div>
+                <div style="grid-column:1 / -1;"><label>Réteg (z-index)</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="z" type="number" step="1" value="${slot.z}" style="width:100%;"></div>
+
+                <div style="grid-column:1 / -1; height:1px; background:#ececec; margin:4px 0;"></div>
+                <div style="grid-column:1 / -1; font-size:11px; color:#666; font-weight:600;">Sarok lekerekítés</div>
+                <div style="grid-column:1 / -1;"><label>Összes sarok (px)</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="radius" type="number" min="0" step="1" value="${unified}" placeholder="külön értékek" style="width:100%;"></div>
+                <div><label>Bal felső (px)</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="radius_tl" type="number" min="0" step="1" value="${radii.tl}" style="width:100%;"></div>
+                <div><label>Jobb felső (px)</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="radius_tr" type="number" min="0" step="1" value="${radii.tr}" style="width:100%;"></div>
+                <div><label>Jobb alsó (px)</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="radius_br" type="number" min="0" step="1" value="${radii.br}" style="width:100%;"></div>
+                <div><label>Bal alsó (px)</label><br><input class="layer-field" data-type="image" data-index="${index}" data-field="radius_bl" type="number" min="0" step="1" value="${radii.bl}" style="width:100%;"></div>
             </div>
         `;
     }
@@ -236,15 +240,15 @@ jQuery(document).ready(function ($) {
     function renderTextLayerFields(slot, index) {
         const fontOptions = photowooshop_admin_vars.font_families || ['hello honey', 'Densia Sans', 'Arima Koshi Regular', 'Capsuula Regular', 'Arial', 'Times New Roman', 'Courier New', 'Impact'];
         return `
-            <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px 12px;">
-                <div><label>X:</label><br><input class="layer-field" data-type="text" data-index="${index}" data-field="x" type="number" step="0.1" value="${slot.x}"> %</div>
-                <div><label>Y:</label><br><input class="layer-field" data-type="text" data-index="${index}" data-field="y" type="number" step="0.1" value="${slot.y}"> %</div>
-                <div><label>Max szélesség:</label><br><input class="layer-field" data-type="text" data-index="${index}" data-field="max_w" type="number" step="1" value="${slot.max_w}"> %</div>
-                <div><label>Méret:</label><br><input class="layer-field" data-type="text" data-index="${index}" data-field="font_size" type="number" step="1" value="${slot.font_size}"></div>
-                <div><label>Szín:</label><br><input class="layer-field" data-type="text" data-index="${index}" data-field="color" type="color" value="${escAttr(slot.color)}"></div>
-                <div><label>Réteg (z):</label><br><input class="layer-field" data-type="text" data-index="${index}" data-field="z" type="number" step="1" value="${slot.z}"></div>
-                <div style="grid-column:1 / -1;"><label>Betűtípus:</label><br>
-                    <select class="layer-field" data-type="text" data-index="${index}" data-field="font_family">${fontOptions.map(f => `<option value="${escAttr(f)}" ${slot.font_family === f ? 'selected' : ''}>${escAttr(f)}</option>`).join('')}</select>
+            <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px 12px; align-items:start;">
+                <div><label>X (%)</label><br><input class="layer-field" data-type="text" data-index="${index}" data-field="x" type="number" step="0.1" value="${slot.x}" style="width:100%;"></div>
+                <div><label>Y (%)</label><br><input class="layer-field" data-type="text" data-index="${index}" data-field="y" type="number" step="0.1" value="${slot.y}" style="width:100%;"></div>
+                <div><label>Max szélesség (%)</label><br><input class="layer-field" data-type="text" data-index="${index}" data-field="max_w" type="number" step="1" value="${slot.max_w}" style="width:100%;"></div>
+                <div><label>Betűméret</label><br><input class="layer-field" data-type="text" data-index="${index}" data-field="font_size" type="number" step="1" value="${slot.font_size}" style="width:100%;"></div>
+                <div><label>Szín</label><br><input class="layer-field" data-type="text" data-index="${index}" data-field="color" type="color" value="${escAttr(slot.color)}" style="width:100%;"></div>
+                <div><label>Réteg (z-index)</label><br><input class="layer-field" data-type="text" data-index="${index}" data-field="z" type="number" step="1" value="${slot.z}" style="width:100%;"></div>
+                <div style="grid-column:1 / -1;"><label>Betűtípus</label><br>
+                    <select class="layer-field" data-type="text" data-index="${index}" data-field="font_family" style="width:100%;">${fontOptions.map(f => `<option value="${escAttr(f)}" ${slot.font_family === f ? 'selected' : ''}>${escAttr(f)}</option>`).join('')}</select>
                 </div>
                 <div style="grid-column:1 / -1;"><label><input class="layer-field" data-type="text" data-index="${index}" data-field="multiline" type="checkbox" ${slot.multiline ? 'checked' : ''}> Többsoros szöveg</label></div>
             </div>
@@ -253,16 +257,16 @@ jQuery(document).ready(function ($) {
 
     function renderShapeLayerFields(slot, index) {
         return `
-            <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px 12px;">
-                <div><label>Forma:</label><br><select class="layer-field" data-type="shape" data-index="${index}" data-field="type"><option value="rect" ${slot.type === 'rect' ? 'selected' : ''}>Téglalap</option><option value="circle" ${slot.type === 'circle' ? 'selected' : ''}>Ellipszis</option></select></div>
-                <div><label>Réteg (z):</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="z" type="number" step="1" value="${slot.z}"></div>
-                <div><label>X:</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="x" type="number" step="0.1" value="${slot.x}"> %</div>
-                <div><label>Y:</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="y" type="number" step="0.1" value="${slot.y}"> %</div>
-                <div><label>Szélesség:</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="w" type="number" step="0.1" value="${slot.w}"> %</div>
-                <div><label>Magasság:</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="h" type="number" step="0.1" value="${slot.h}"> %</div>
-                <div><label>Szín:</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="color" type="color" value="${escAttr(slot.color)}"></div>
-                <div><label>Opacity:</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="opacity" type="number" step="0.01" min="0" max="1" value="${slot.opacity}"></div>
-                <div><label>Sarok:</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="radius" type="number" step="1" min="0" value="${slot.radius}"> px</div>
+            <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px 12px; align-items:start;">
+                <div style="grid-column:1 / -1;"><label>Forma</label><br><select class="layer-field" data-type="shape" data-index="${index}" data-field="type" style="width:100%;"><option value="rect" ${slot.type === 'rect' ? 'selected' : ''}>Téglalap</option><option value="circle" ${slot.type === 'circle' ? 'selected' : ''}>Ellipszis</option></select></div>
+                <div><label>X (%)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="x" type="number" step="0.1" value="${slot.x}" style="width:100%;"></div>
+                <div><label>Y (%)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="y" type="number" step="0.1" value="${slot.y}" style="width:100%;"></div>
+                <div><label>Szélesség (%)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="w" type="number" step="0.1" value="${slot.w}" style="width:100%;"></div>
+                <div><label>Magasság (%)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="h" type="number" step="0.1" value="${slot.h}" style="width:100%;"></div>
+                <div><label>Szín</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="color" type="color" value="${escAttr(slot.color)}" style="width:100%;"></div>
+                <div><label>Opacity (0-1)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="opacity" type="number" step="0.01" min="0" max="1" value="${slot.opacity}" style="width:100%;"></div>
+                <div><label>Sarok (px)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="radius" type="number" step="1" min="0" value="${slot.radius}" style="width:100%;"></div>
+                <div><label>Réteg (z-index)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="z" type="number" step="1" value="${slot.z}" style="width:100%;"></div>
             </div>
         `;
     }
@@ -325,15 +329,15 @@ jQuery(document).ready(function ($) {
             const typeLabel = item.type === 'image' ? 'Kep' : (item.type === 'text' ? 'Szoveg' : 'Alakzat');
             const opened = item.key === expandedLayerKey;
             layerListContainer.append(`
-                <div class="layer-item" draggable="true" data-key="${item.key}" data-type="${item.type}" data-index="${item.index}">
-                    <div class="layer-item-header" style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <div class="layer-item" draggable="true" data-key="${item.key}" data-type="${item.type}" data-index="${item.index}" style="padding:10px; border:1px solid #e6e6e6; border-radius:10px; background:#fff; margin-bottom:8px;">
+                    <div class="layer-item-header" style="display:flex; align-items:center; gap:8px; cursor:pointer; width:100%;">
                         <span class="layer-handle">≡</span>
                         <span class="layer-type layer-${item.type}">${typeLabel}</span>
-                        <input type="text" class="layer-name-input" value="${escAttr(item.name || '')}" data-type="${item.type}" data-index="${item.index}" title="Reteg neve" style="flex:1; min-width:0;">
-                        <span class="layer-z">z: ${item.z}</span>
+                        <input type="text" class="layer-name-input" value="${escAttr(item.name || '')}" data-type="${item.type}" data-index="${item.index}" title="Reteg neve" style="flex:1; min-width:0; max-width:none;">
+                        <span class="layer-z" style="white-space:nowrap;">z: ${item.z}</span>
                         <span style="font-weight:bold; color:#666;">${opened ? '−' : '+'}</span>
                     </div>
-                    <div class="layer-item-body" style="display:${opened ? 'block' : 'none'}; margin-top:8px; padding:10px; border:1px solid #eee; border-radius:8px; background:#fafafa;">
+                    <div class="layer-item-body" style="display:${opened ? 'block' : 'none'}; margin-top:10px; padding-top:10px; border-top:1px solid #ececec; width:100%;">
                         ${renderLayerDetails(item)}
                     </div>
                 </div>
