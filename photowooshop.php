@@ -1087,9 +1087,11 @@ class Photowooshop
         $smoke_report = get_option(self::SMOKE_REPORT_OPTION, array());
         $index_cache = get_option(self::INDEX_CACHE_OPTION, array());
         $cleanup_ran = isset($_GET['photowooshop_cleanup_ran']) && $_GET['photowooshop_cleanup_ran'] === '1';
-        $update_check_ran = isset($_GET['photowooshop_update_check_ran']) && $_GET['photowooshop_update_check_ran'] === '1';
-        $update_check_release = $update_check_ran ? $this->get_latest_github_release(false) : null;
-        $cached_update_data = get_option(self::UPDATE_CACHE_OPTION, array());
+        $update_check_ran     = isset($_GET['photowooshop_update_check_ran'])  && $_GET['photowooshop_update_check_ran'] === '1';
+        $update_check_status  = $update_check_ran && isset($_GET['photowooshop_uc_status'])  ? sanitize_text_field(wp_unslash($_GET['photowooshop_uc_status']))  : '';
+        $update_check_version = $update_check_ran && isset($_GET['photowooshop_uc_version']) ? sanitize_text_field(wp_unslash($_GET['photowooshop_uc_version'])) : '';
+        $update_check_source  = $update_check_ran && isset($_GET['photowooshop_uc_source'])  ? sanitize_text_field(wp_unslash($_GET['photowooshop_uc_source']))  : '';
+        $cached_update_data   = get_option(self::UPDATE_CACHE_OPTION, array());
         $index_ran = isset($_GET['photowooshop_index_ran']) && $_GET['photowooshop_index_ran'] === '1';
         $global_repair_ran = isset($_GET['photowooshop_global_repair_ran']) && $_GET['photowooshop_global_repair_ran'] === '1';
         $smoke_ran = isset($_GET['photowooshop_smoke_ran']) && $_GET['photowooshop_smoke_ran'] === '1';
@@ -1102,9 +1104,26 @@ class Photowooshop
                 </div>
             <?php endif; ?>
             <?php if ($update_check_ran): ?>
-                <div class="notice notice-success is-dismissible">
-                    <p>GitHub frissítés cache törölve és újraellenőrizve.</p>
-                </div>
+                <?php if ($update_check_status === 'api_error'): ?>
+                    <div class="notice notice-error is-dismissible">
+                        <p><strong>GitHub API hiba!</strong> Nem sikerült elérni a GitHub-ot. Ellenőrizd az internet-kapcsolatot, vagy a GitHub API rate limitet. (Cache törölve, de új adat nem töltődött be.)</p>
+                    </div>
+                <?php else: ?>
+                    <?php $uc_needs_update = $update_check_version && version_compare(self::PLUGIN_VERSION, $update_check_version, '<'); ?>
+                    <div class="notice <?php echo $uc_needs_update ? 'notice-warning' : 'notice-success'; ?> is-dismissible">
+                        <p>
+                            <strong>GitHub frissítés-ellenőrzés kész.</strong>
+                            Telepített verzió: <strong><?php echo esc_html(self::PLUGIN_VERSION); ?></strong> |
+                            GitHub legújabb: <strong><?php echo esc_html($update_check_version); ?></strong>
+                            (forrás: <?php echo esc_html($update_check_source); ?>)<br>
+                            <?php if ($uc_needs_update): ?>
+                                <span style="color:#d63638; font-weight:bold;">&#x26A0; Frissítés érhető el! Menj: Irányítópult → Frissítések</span>
+                            <?php else: ?>
+                                <span style="color:#2e7d32;">&#x2713; Nincs szükséges frissítés – a plugin naprakész.</span>
+                            <?php endif; ?>
+                        </p>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
             <?php if ($index_ran): ?>
                 <div class="notice notice-success is-dismissible">
@@ -1278,7 +1297,7 @@ class Photowooshop
                 <tbody>
                     <tr>
                         <td><strong>Plugin verzió</strong></td>
-                        <td><?php echo esc_html(self::PLUGIN_VERSION); ?></td>
+                        <td><?php echo esc_html(self::PLUGIN_VERSION); ?> <small style="color:#888">(telepített)</small></td>
                     </tr>
                     <tr>
                         <td><strong>Környezet</strong></td>
@@ -1576,11 +1595,19 @@ class Photowooshop
 
         delete_option(self::UPDATE_CACHE_OPTION);
         delete_site_transient('update_plugins');
-        $this->get_latest_github_release(true);
+        $release = $this->get_latest_github_release(true);
+
+        $status = 'ok';
+        if (empty($release) || empty($release['version'])) {
+            $status = 'api_error';
+        }
 
         $redirect_url = add_query_arg(array(
-            'page' => 'photowooshop',
-            'photowooshop_update_check_ran' => '1',
+            'page'                           => 'photowooshop',
+            'photowooshop_update_check_ran'  => '1',
+            'photowooshop_uc_status'         => $status,
+            'photowooshop_uc_version'        => !empty($release['version']) ? rawurlencode((string) $release['version']) : '',
+            'photowooshop_uc_source'         => !empty($release['source'])  ? rawurlencode((string) $release['source'])  : '',
         ), admin_url('admin.php'));
         wp_safe_redirect($redirect_url);
         exit;
