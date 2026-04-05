@@ -34,6 +34,7 @@ class Photowooshop
     const UPDATE_CACHE_OPTION = 'photowooshop_github_update_cache';
     const GITHUB_REPOSITORY = 'gaborknippl/photowooshop';
     const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/gaborknippl/photowooshop/releases/latest';
+    const GITHUB_TAGS_API = 'https://api.github.com/repos/gaborknippl/photowooshop/tags?per_page=1';
 
     public static function get_instance()
     {
@@ -170,24 +171,53 @@ class Photowooshop
             ),
         ));
 
-        if (is_wp_error($response) || (int) wp_remote_retrieve_response_code($response) !== 200) {
-            return (is_array($cached) && isset($cached['data']) && is_array($cached['data'])) ? $cached['data'] : null;
+        $release_data = null;
+        if (!is_wp_error($response) && (int) wp_remote_retrieve_response_code($response) === 200) {
+            $payload = json_decode(wp_remote_retrieve_body($response), true);
+            if (is_array($payload) && !empty($payload['tag_name'])) {
+                $tag = (string) $payload['tag_name'];
+                $release_data = array(
+                    'version' => ltrim($tag, 'vV'),
+                    'tag' => $tag,
+                    'zipball_url' => isset($payload['zipball_url']) ? (string) $payload['zipball_url'] : '',
+                    'html_url' => isset($payload['html_url']) ? (string) $payload['html_url'] : ('https://github.com/' . self::GITHUB_REPOSITORY),
+                    'published_at' => isset($payload['published_at']) ? (string) $payload['published_at'] : '',
+                    'body' => isset($payload['body']) ? (string) $payload['body'] : '',
+                    'source' => 'release',
+                );
+            }
         }
 
-        $payload = json_decode(wp_remote_retrieve_body($response), true);
-        if (!is_array($payload) || empty($payload['tag_name'])) {
-            return (is_array($cached) && isset($cached['data']) && is_array($cached['data'])) ? $cached['data'] : null;
+        // Fallback: if Releases are not used yet, use the latest tag.
+        if (empty($release_data)) {
+            $tags_response = wp_remote_get(self::GITHUB_TAGS_API, array(
+                'timeout' => 15,
+                'headers' => array(
+                    'Accept' => 'application/vnd.github+json',
+                    'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . home_url('/'),
+                ),
+            ));
+
+            if (!is_wp_error($tags_response) && (int) wp_remote_retrieve_response_code($tags_response) === 200) {
+                $tags_payload = json_decode(wp_remote_retrieve_body($tags_response), true);
+                if (is_array($tags_payload) && !empty($tags_payload[0]['name'])) {
+                    $tag = (string) $tags_payload[0]['name'];
+                    $release_data = array(
+                        'version' => ltrim($tag, 'vV'),
+                        'tag' => $tag,
+                        'zipball_url' => 'https://github.com/' . self::GITHUB_REPOSITORY . '/archive/refs/tags/' . rawurlencode($tag) . '.zip',
+                        'html_url' => 'https://github.com/' . self::GITHUB_REPOSITORY . '/releases/tag/' . rawurlencode($tag),
+                        'published_at' => '',
+                        'body' => '',
+                        'source' => 'tag',
+                    );
+                }
+            }
         }
 
-        $tag = (string) $payload['tag_name'];
-        $release_data = array(
-            'version' => ltrim($tag, 'vV'),
-            'tag' => $tag,
-            'zipball_url' => isset($payload['zipball_url']) ? (string) $payload['zipball_url'] : '',
-            'html_url' => isset($payload['html_url']) ? (string) $payload['html_url'] : ('https://github.com/' . self::GITHUB_REPOSITORY),
-            'published_at' => isset($payload['published_at']) ? (string) $payload['published_at'] : '',
-            'body' => isset($payload['body']) ? (string) $payload['body'] : '',
-        );
+        if (empty($release_data)) {
+            return (is_array($cached) && isset($cached['data']) && is_array($cached['data'])) ? $cached['data'] : null;
+        }
 
         update_option(self::UPDATE_CACHE_OPTION, array(
             'checked_at' => time(),

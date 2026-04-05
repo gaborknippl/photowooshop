@@ -7,6 +7,7 @@ Photowooshop WordPress plugin for WooCommerce custom photo montage products.
 This plugin includes a GitHub release update checker.
 
 - It queries the latest release from: `gaborknippl/photowooshop`
+- If no GitHub Release exists yet, it falls back to the latest Git tag automatically
 - If a newer release tag is available than the plugin `Version`, WordPress shows an update notice
 - The updater installs the release zip from GitHub
 
@@ -19,6 +20,7 @@ To make WordPress updates work reliably:
    - `v1.1.28`
    - `v1.2.0`
 3. Ensure each release has generated source zip (GitHub does this automatically).
+4. Recommended: always publish a Release object, but tags alone still work as fallback.
 
 ## Release checklist
 
