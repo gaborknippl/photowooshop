@@ -110,6 +110,28 @@ jQuery(document).ready(function ($) {
         return `${radii.tl}px ${radii.tr}px ${radii.br}px ${radii.bl}px`;
     }
 
+    function getShapeCornerRadii(slot, fallback = 10) {
+        const base = typeof slot.radius === 'number' ? Math.max(0, slot.radius) : fallback;
+        const source = (slot && slot.radii && typeof slot.radii === 'object') ? slot.radii : {};
+
+        const tl = Math.max(0, parseFloat(source.tl));
+        const tr = Math.max(0, parseFloat(source.tr));
+        const br = Math.max(0, parseFloat(source.br));
+        const bl = Math.max(0, parseFloat(source.bl));
+
+        return {
+            tl: Number.isNaN(tl) ? base : tl,
+            tr: Number.isNaN(tr) ? base : tr,
+            br: Number.isNaN(br) ? base : br,
+            bl: Number.isNaN(bl) ? base : bl
+        };
+    }
+
+    function getShapeBorderRadiusCss(slot, fallback = 10) {
+        const radii = getShapeCornerRadii(slot, fallback);
+        return `${radii.tl}px ${radii.tr}px ${radii.br}px ${radii.bl}px`;
+    }
+
     function updateCornerMapPreview(row, radii) {
         const preview = row.find('.image-corner-map-preview');
         if (!preview.length) {
@@ -256,6 +278,8 @@ jQuery(document).ready(function ($) {
     }
 
     function renderShapeLayerFields(slot, index) {
+        const radii = getShapeCornerRadii(slot, 10);
+        const unified = getUnifiedRadiusValue(radii);
         return `
             <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px 12px; align-items:start;">
                 <div style="grid-column:1 / -1;"><label>Forma</label><br><select class="layer-field" data-type="shape" data-index="${index}" data-field="type" style="width:100%;"><option value="rect" ${slot.type === 'rect' ? 'selected' : ''}>Téglalap</option><option value="circle" ${slot.type === 'circle' ? 'selected' : ''}>Ellipszis</option></select></div>
@@ -265,8 +289,12 @@ jQuery(document).ready(function ($) {
                 <div><label>Magasság (%)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="h" type="number" step="0.1" value="${slot.h}" style="width:100%;"></div>
                 <div><label>Szín</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="color" type="color" value="${escAttr(slot.color)}" style="width:100%;"></div>
                 <div><label>Opacity (0-1)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="opacity" type="number" step="0.01" min="0" max="1" value="${slot.opacity}" style="width:100%;"></div>
-                <div><label>Sarok (px)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="radius" type="number" step="1" min="0" value="${slot.radius}" style="width:100%;"></div>
                 <div><label>Réteg (z-index)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="z" type="number" step="1" value="${slot.z}" style="width:100%;"></div>
+                <div><label>Összes sarok (px)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="radius" type="number" step="1" min="0" value="${unified}" placeholder="külön értékek" style="width:100%;"></div>
+                <div><label>Bal felső (px)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="radius_tl" type="number" step="1" min="0" value="${radii.tl}" style="width:100%;"></div>
+                <div><label>Jobb felső (px)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="radius_tr" type="number" step="1" min="0" value="${radii.tr}" style="width:100%;"></div>
+                <div><label>Jobb alsó (px)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="radius_br" type="number" step="1" min="0" value="${radii.br}" style="width:100%;"></div>
+                <div><label>Bal alsó (px)</label><br><input class="layer-field" data-type="shape" data-index="${index}" data-field="radius_bl" type="number" step="1" min="0" value="${radii.bl}" style="width:100%;"></div>
             </div>
         `;
     }
@@ -450,13 +478,30 @@ jQuery(document).ready(function ($) {
                 val = $(this).val();
             }
 
-            shapeSlots[index][field] = val;
+            if (field === 'radius') {
+                val = Math.max(0, val);
+                shapeSlots[index].radius = val;
+                shapeSlots[index].radii = { tl: val, tr: val, br: val, bl: val };
+                const row = $(this).closest('.layer-item-body');
+                row.find('input[data-field="radius_tl"]').val(val);
+                row.find('input[data-field="radius_tr"]').val(val);
+                row.find('input[data-field="radius_br"]').val(val);
+                row.find('input[data-field="radius_bl"]').val(val);
+            } else if (field === 'radius_tl' || field === 'radius_tr' || field === 'radius_br' || field === 'radius_bl') {
+                val = Math.max(0, val);
+                const key = field.replace('radius_', '');
+                const radii = getShapeCornerRadii(shapeSlots[index], 10);
+                radii[key] = val;
+                shapeSlots[index].radii = radii;
+                shapeSlots[index].radius = radii.tl;
+                $(this).closest('.layer-item-body').find('input[data-field="radius"]').val(getUnifiedRadiusValue(radii));
+            } else {
+                shapeSlots[index][field] = val;
+            }
+
             if (field === 'opacity') {
                 if (shapeSlots[index][field] < 0) shapeSlots[index][field] = 0;
                 if (shapeSlots[index][field] > 1) shapeSlots[index][field] = 1;
-            }
-            if (field === 'radius') {
-                if (shapeSlots[index][field] < 0) shapeSlots[index][field] = 0;
             }
 
             const visualEl = workspace.find(`.tpl-shape-slot[data-index="${index}"]`);
@@ -772,8 +817,8 @@ jQuery(document).ready(function ($) {
 
     function applyShapeStyle(el, slot) {
         const opacity = typeof slot.opacity === 'number' ? slot.opacity : 0.45;
-        const radius = typeof slot.radius === 'number' ? slot.radius : 10;
         const z = typeof slot.z === 'number' ? slot.z : 30;
+        const radiiCss = slot.type === 'circle' ? '9999px' : getShapeBorderRadiusCss(slot, 10);
 
         el.css({
             position: 'absolute',
@@ -784,7 +829,7 @@ jQuery(document).ready(function ($) {
             height: slot.h + '%',
             background: slot.color,
             opacity: opacity,
-            borderRadius: slot.type === 'circle' ? '9999px' : radius + 'px',
+            borderRadius: radiiCss,
             border: '1px dashed rgba(255,255,255,0.8)',
             boxSizing: 'border-box',
             zIndex: z,
@@ -855,9 +900,11 @@ jQuery(document).ready(function ($) {
                 color: '#000000',
                 opacity: 0.45,
                 radius: 10,
+                radii: { tl: 10, tr: 10, br: 10, bl: 10 },
                 z: 30,
                 name: defaultShapeName(index)
             }, slot);
+            safeSlot.radii = getShapeCornerRadii(safeSlot, 10);
             shapeSlots[index] = safeSlot;
 
             const el = $('<div class="tpl-shape-slot"></div>').attr('data-index', index);

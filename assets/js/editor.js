@@ -199,6 +199,7 @@ jQuery(document).ready(function ($) {
             color: '#000000',
             opacity: 0.45,
             radius: 10,
+            radii: { tl: 10, tr: 10, br: 10, bl: 10 },
             z: 30
         }, slot || {});
     }
@@ -244,6 +245,29 @@ jQuery(document).ready(function ($) {
         return `${radii.tl}px ${radii.tr}px ${radii.br}px ${radii.bl}px`;
     }
 
+    function getShapeCornerRadii(slot, fallback = 0) {
+        const base = Math.max(0, parseFloat(slot && slot.radius));
+        const safeBase = Number.isNaN(base) ? fallback : base;
+        const source = (slot && slot.radii && typeof slot.radii === 'object') ? slot.radii : {};
+
+        const tl = Math.max(0, parseFloat(source.tl));
+        const tr = Math.max(0, parseFloat(source.tr));
+        const br = Math.max(0, parseFloat(source.br));
+        const bl = Math.max(0, parseFloat(source.bl));
+
+        return {
+            tl: Number.isNaN(tl) ? safeBase : tl,
+            tr: Number.isNaN(tr) ? safeBase : tr,
+            br: Number.isNaN(br) ? safeBase : br,
+            bl: Number.isNaN(bl) ? safeBase : bl
+        };
+    }
+
+    function getShapeBorderRadiusCss(slot, fallback = 0) {
+        const radii = getShapeCornerRadii(slot, fallback);
+        return `${radii.tl}px ${radii.tr}px ${radii.br}px ${radii.bl}px`;
+    }
+
     function renderShapeLayers() {
         const grid = $('#montage-grid');
         grid.find('.photowooshop-shape-layer').remove();
@@ -264,7 +288,6 @@ jQuery(document).ready(function ($) {
 
     function applyShapeLayerStyles(el, slot) {
         const safeOpacity = Math.max(0, Math.min(1, parseFloat(slot.opacity) || 0));
-        const safeRadius = Math.max(0, parseFloat(slot.radius) || 0);
         const safeZ = parseInt(slot.z, 10);
 
         el.css({
@@ -276,7 +299,7 @@ jQuery(document).ready(function ($) {
             transform: 'translate(-50%, -50%)',
             background: slot.color || '#000000',
             opacity: safeOpacity,
-            borderRadius: slot.type === 'circle' ? '9999px' : safeRadius + 'px',
+            borderRadius: slot.type === 'circle' ? '9999px' : getShapeBorderRadiusCss(slot, 10),
             zIndex: Number.isNaN(safeZ) ? 12 : safeZ,
             pointerEvents: 'none'
         });
@@ -769,18 +792,14 @@ jQuery(document).ready(function ($) {
                 ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
                 ctx.fill();
             } else {
-                const radius = Math.max(0, Math.min((Math.min(w, h) / 2), parseFloat(slot.radius) || 0));
-                ctx.beginPath();
-                ctx.moveTo(left + radius, top);
-                ctx.lineTo(left + w - radius, top);
-                ctx.quadraticCurveTo(left + w, top, left + w, top + radius);
-                ctx.lineTo(left + w, top + h - radius);
-                ctx.quadraticCurveTo(left + w, top + h, left + w - radius, top + h);
-                ctx.lineTo(left + radius, top + h);
-                ctx.quadraticCurveTo(left, top + h, left, top + h - radius);
-                ctx.lineTo(left, top + radius);
-                ctx.quadraticCurveTo(left, top, left + radius, top);
-                ctx.closePath();
+                const rawRadii = getShapeCornerRadii(slot, 10);
+                const scaledRadii = {
+                    tl: rawRadii.tl,
+                    tr: rawRadii.tr,
+                    br: rawRadii.br,
+                    bl: rawRadii.bl
+                };
+                drawRoundedRectPath(ctx, left, top, w, h, scaledRadii);
                 ctx.fill();
             }
 
