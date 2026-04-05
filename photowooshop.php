@@ -401,6 +401,12 @@ class Photowooshop
                 value="<?php echo esc_attr($slots_json); ?>">
 
             <div class="tpl-settings" style="margin-top:20px; padding:15px; background:#f9f9f9; border:1px solid #ddd;">
+                <h4>Képhelyek Beállításai</h4>
+                <p style="margin: 0 0 10px; color:#666;">A képhelyek sarok lekerekítése és rétegsorrendje itt állítható.</p>
+                <div id="image-slots-container"></div>
+            </div>
+
+            <div class="tpl-settings" style="margin-top:20px; padding:15px; background:#f9f9f9; border:1px solid #ddd;">
                 <h4>Egyedi Szöveg Beállítások</h4>
                 <button type="button" id="add-text-btn" class="button button-secondary" style="margin-bottom:15px;">+ Új Szöveg
                     Hozzáadása</button>

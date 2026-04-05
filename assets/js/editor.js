@@ -173,9 +173,10 @@ jQuery(document).ready(function ($) {
             const imgSrc = serverImageUrls[i] || slotsData[i];
             const hasImg = !!imgSrc;
             const content = hasImg ? `<img src="${imgSrc}" style="width:100%; height:100%; object-fit:cover;">` : `<span class="slot-label">${i}. hely</span>`;
+            const slotRadius = dynamicSlots ? getImageSlotRadius(dynamicSlots[i - 1], 4) : 4;
 
             html += `
-                <div class="montage-slot slot-${i} ${hasImg ? 'has-image' : ''}" data-slot="${i}">
+                <div class="montage-slot slot-${i} ${hasImg ? 'has-image' : ''}" data-slot="${i}" style="border-radius:${slotRadius}px;">
                     ${content}
                     ${hasImg ? `
                         <div class="slot-actions">
@@ -218,6 +219,14 @@ jQuery(document).ready(function ($) {
     function getImageSlotLayer(slot, fallback = 10) {
         const z = parseInt(slot && slot.z, 10);
         return Number.isNaN(z) ? fallback : z;
+    }
+
+    function getImageSlotRadius(slot, fallback = 0) {
+        const radius = parseFloat(slot && slot.radius);
+        if (Number.isNaN(radius)) {
+            return fallback;
+        }
+        return Math.max(0, radius);
     }
 
     function renderShapeLayers() {
@@ -390,6 +399,7 @@ jQuery(document).ready(function ($) {
                     'top': slot.y + '%',
                     'width': slot.w + '%',
                     'height': slot.h + '%',
+                    'border-radius': getImageSlotRadius(slot, 4) + 'px',
                     'z-index': getImageSlotLayer(slot, 10)
                 });
             });
@@ -686,6 +696,21 @@ jQuery(document).ready(function ($) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
+        function drawRoundedRectPath(context, x, y, w, h, radius) {
+            const r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+            context.beginPath();
+            context.moveTo(x + r, y);
+            context.lineTo(x + w - r, y);
+            context.quadraticCurveTo(x + w, y, x + w, y + r);
+            context.lineTo(x + w, y + h - r);
+            context.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            context.lineTo(x + r, y + h);
+            context.quadraticCurveTo(x, y + h, x, y + h - r);
+            context.lineTo(x, y + r);
+            context.quadraticCurveTo(x, y, x + r, y);
+            context.closePath();
+        }
+
         function drawShapeLayer(slot) {
             const x = (slot.x / 100) * canvas.width;
             const y = (slot.y / 100) * canvas.height;
@@ -797,6 +822,7 @@ jQuery(document).ready(function ($) {
                     img.onload = function () {
                         let x, y, w, h;
                         let z = 10;
+                        let radius = 0;
 
                         if (dynamicSlots) {
                             const slot = dynamicSlots[i - 1];
@@ -805,6 +831,7 @@ jQuery(document).ready(function ($) {
                             w = (slot.w / 100) * canvas.width;
                             h = (slot.h / 100) * canvas.height;
                             z = getImageSlotLayer(slot, 10);
+                            radius = getImageSlotRadius(slot, 0);
                         } else {
                             const layout = LAYOUTS[currentLayout];
                             w = canvas.width / layout.cols;
@@ -813,7 +840,7 @@ jQuery(document).ready(function ($) {
                             y = Math.floor((i - 1) / layout.cols) * h;
                         }
 
-                        resolve({ kind: 'image', z: z, img: img, x: x, y: y, w: w, h: h });
+                        resolve({ kind: 'image', z: z, img: img, x: x, y: y, w: w, h: h, radius: radius });
                     };
                     img.onerror = function () {
                         resolve(null);
@@ -846,9 +873,24 @@ jQuery(document).ready(function ($) {
 
                 allLayers.sort((a, b) => a.z - b.z);
 
+                const gridWidth = $('#montage-grid').width() || canvas.width;
+                const gridHeight = $('#montage-grid').height() || canvas.height;
+                const radiusScaleX = canvas.width / gridWidth;
+                const radiusScaleY = canvas.height / gridHeight;
+                const radiusScale = Math.min(radiusScaleX, radiusScaleY);
+
                 allLayers.forEach((layer) => {
                     if (layer.kind === 'image') {
-                        ctx.drawImage(layer.img, layer.x, layer.y, layer.w, layer.h);
+                        const scaledRadius = Math.max(0, (layer.radius || 0) * radiusScale);
+                        if (scaledRadius > 0) {
+                            ctx.save();
+                            drawRoundedRectPath(ctx, layer.x, layer.y, layer.w, layer.h, scaledRadius);
+                            ctx.clip();
+                            ctx.drawImage(layer.img, layer.x, layer.y, layer.w, layer.h);
+                            ctx.restore();
+                        } else {
+                            ctx.drawImage(layer.img, layer.x, layer.y, layer.w, layer.h);
+                        }
                     } else if (layer.kind === 'shape') {
                         drawShapeLayer(layer.slot);
                     } else if (layer.kind === 'text') {

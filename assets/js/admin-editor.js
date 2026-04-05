@@ -4,6 +4,7 @@ jQuery(document).ready(function ($) {
     const slotsInput = $('#_photowooshop_slots_json');
     const addBtn = $('#add-slot-btn');
     const layerListContainer = $('#tpl-layer-list');
+    const imageSettingsContainer = $('#image-slots-container');
 
     let slots = [];
     let textSlots = [];
@@ -61,6 +62,7 @@ jQuery(document).ready(function ($) {
     function ensureSlotDefaults() {
         slots.forEach((slot, index) => {
             if (typeof slot.z !== 'number') slot.z = 10;
+            if (typeof slot.radius !== 'number') slot.radius = 10;
             if (!slot.name) slot.name = defaultImageName(index);
         });
 
@@ -108,7 +110,7 @@ jQuery(document).ready(function ($) {
 
     function syncLayerValuesToSettings() {
         slots.forEach((slot, index) => {
-            const row = $(`.image-slot-layer-setting[data-index="${index}"]`);
+            const row = imageSettingsContainer.find(`.image-slot-setting[data-index="${index}"]`);
             row.find('input[data-field="z"]').val(slot.z);
         });
 
@@ -186,6 +188,64 @@ jQuery(document).ready(function ($) {
             `);
         });
     }
+
+    function renderImageSlotSettings() {
+        imageSettingsContainer.empty();
+
+        slots.forEach((slot, index) => {
+            const safeRadius = Math.max(0, parseFloat(slot.radius) || 0);
+            const safeZ = parseInt(slot.z, 10);
+
+            const settingsHtml = `
+                <div class="image-slot-setting" data-index="${index}" style="background:#fff; border:1px solid #ddd; padding:10px; margin-bottom:10px; border-radius:4px; position:relative;">
+                    <h5 style="margin:0 0 10px;">${slot.name || defaultImageName(index)}</h5>
+                    <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px 12px;">
+                        <div>
+                            <label>Sarok lekerekítés:</label><br>
+                            <input type="number" data-field="radius" value="${safeRadius}" min="0" step="1" style="width:70px;"> px
+                        </div>
+                        <div>
+                            <label>Réteg (z-index):</label><br>
+                            <input type="number" data-field="z" value="${Number.isNaN(safeZ) ? 10 : safeZ}" step="1" style="width:70px;">
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            imageSettingsContainer.append(settingsHtml);
+        });
+    }
+
+    imageSettingsContainer.on('input change', 'input', function () {
+        const idx = $(this).closest('.image-slot-setting').data('index');
+        const field = $(this).data('field');
+
+        if (!slots[idx]) {
+            return;
+        }
+
+        let val = parseFloat($(this).val());
+        if (Number.isNaN(val)) {
+            val = 0;
+        }
+
+        if (field === 'radius') {
+            val = Math.max(0, val);
+            slots[idx].radius = val;
+            workspace.find(`.tpl-slot[data-index="${idx}"]`).css('border-radius', val + 'px');
+            $(this).val(val);
+        }
+
+        if (field === 'z') {
+            const z = parseInt(val, 10);
+            slots[idx].z = Number.isNaN(z) ? 10 : z;
+            workspace.find(`.tpl-slot[data-index="${idx}"]`).css('z-index', slots[idx].z);
+            $(this).val(slots[idx].z);
+            renderLayerManager();
+        }
+
+        save();
+    });
 
     addTextBtn.on('click', function () {
         textSlots.push({
@@ -437,6 +497,10 @@ jQuery(document).ready(function ($) {
         const type = $(this).data('type');
         const index = parseInt($(this).data('index'), 10);
         setLayerName(type, index, $(this).val());
+
+        if (type === 'image') {
+            imageSettingsContainer.find(`.image-slot-setting[data-index="${index}"] h5`).text(slots[index].name || defaultImageName(index));
+        }
 
         if (type === 'text') {
             const labelEl = workspace.find(`.tpl-text-slot[data-index="${index}"]`);
@@ -697,6 +761,9 @@ jQuery(document).ready(function ($) {
             if (typeof slot.z !== 'number') {
                 slot.z = 10;
             }
+            if (typeof slot.radius !== 'number') {
+                slot.radius = 10;
+            }
             if (!slot.name) {
                 slot.name = defaultImageName(index);
             }
@@ -709,12 +776,15 @@ jQuery(document).ready(function ($) {
                 top: slot.y + '%',
                 width: slot.w + '%',
                 height: slot.h + '%',
-                zIndex: slot.z
+                zIndex: slot.z,
+                borderRadius: slot.radius + 'px'
             });
 
             workspace.append(el);
             makeInteractable(el[0]);
         });
+
+        renderImageSlotSettings();
     }
 
     function makeInteractable(el) {
@@ -795,7 +865,7 @@ jQuery(document).ready(function ($) {
     }
 
     addBtn.on('click', function () {
-        slots.push({ x: 10, y: 10, w: 20, h: 20, z: 10, name: defaultImageName(slots.length) });
+        slots.push({ x: 10, y: 10, w: 20, h: 20, z: 10, radius: 10, name: defaultImageName(slots.length) });
         renderSlots();
         renderLayerManager();
         save();
