@@ -54,6 +54,7 @@ class Photowooshop
         add_action('admin_post_photowooshop_rebuild_index', array($this, 'handle_rebuild_index'));
         add_action('admin_post_photowooshop_run_global_repair', array($this, 'handle_run_global_repair'));
         add_action('admin_post_photowooshop_run_smoke_test', array($this, 'handle_run_smoke_test'));
+        add_action('admin_post_photowooshop_force_update_check', array($this, 'handle_force_update_check'));
         add_filter('pre_set_site_transient_update_plugins', array($this, 'inject_github_plugin_update'));
         add_filter('plugins_api', array($this, 'filter_github_plugin_information'), 20, 3);
         add_filter('upgrader_source_selection', array($this, 'fix_github_upgrader_source_dir'), 10, 4);
@@ -1086,6 +1087,9 @@ class Photowooshop
         $smoke_report = get_option(self::SMOKE_REPORT_OPTION, array());
         $index_cache = get_option(self::INDEX_CACHE_OPTION, array());
         $cleanup_ran = isset($_GET['photowooshop_cleanup_ran']) && $_GET['photowooshop_cleanup_ran'] === '1';
+        $update_check_ran = isset($_GET['photowooshop_update_check_ran']) && $_GET['photowooshop_update_check_ran'] === '1';
+        $update_check_release = $update_check_ran ? $this->get_latest_github_release(false) : null;
+        $cached_update_data = get_option(self::UPDATE_CACHE_OPTION, array());
         $index_ran = isset($_GET['photowooshop_index_ran']) && $_GET['photowooshop_index_ran'] === '1';
         $global_repair_ran = isset($_GET['photowooshop_global_repair_ran']) && $_GET['photowooshop_global_repair_ran'] === '1';
         $smoke_ran = isset($_GET['photowooshop_smoke_ran']) && $_GET['photowooshop_smoke_ran'] === '1';
@@ -1095,6 +1099,11 @@ class Photowooshop
             <?php if ($cleanup_ran): ?>
                 <div class="notice notice-success is-dismissible">
                     <p>Az automatikus takarítás manuálisan lefutott.</p>
+                </div>
+            <?php endif; ?>
+            <?php if ($update_check_ran): ?>
+                <div class="notice notice-success is-dismissible">
+                    <p>GitHub frissítés cache törölve és újraellenőrizve.</p>
                 </div>
             <?php endif; ?>
             <?php if ($index_ran): ?>
@@ -1287,10 +1296,35 @@ class Photowooshop
                         <td><strong>Index cache ideje</strong></td>
                         <td><?php echo !empty($index_cache['generated_at']) ? esc_html($index_cache['generated_at']) : 'N/A'; ?></td>
                     </tr>
+                    <?php
+                    $uc = is_array($cached_update_data) ? $cached_update_data : array();
+                    $github_version = !empty($uc['data']['version']) ? esc_html($uc['data']['version']) : 'N/A (cache üres)';
+                    $github_source  = !empty($uc['data']['source'])  ? esc_html($uc['data']['source'])  : '-';
+                    $github_checked = !empty($uc['checked_at']) ? esc_html(date('Y-m-d H:i:s', (int)$uc['checked_at'])) : 'Még nem ellenőrzött';
+                    $github_age_min = !empty($uc['checked_at']) ? round((time() - (int)$uc['checked_at']) / 60) : null;
+                    $needs_update   = !empty($uc['data']['version']) && version_compare(self::PLUGIN_VERSION, $uc['data']['version'], '<');
+                    ?>
+                    <tr>
+                        <td><strong>GitHub legújabb verzió</strong></td>
+                        <td><?php echo $github_version; ?> <small style="color:#888">(forrás: <?php echo $github_source; ?>)</small></td>
+                    </tr>
+                    <tr>
+                        <td><strong>GitHub API lekérve</strong></td>
+                        <td><?php echo $github_checked; ?><?php if ($github_age_min !== null): ?> <small style="color:#888">(<?php echo esc_html((string)$github_age_min); ?> perce)</small><?php endif; ?></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Frissítés szükséges?</strong></td>
+                        <td><?php if (!empty($uc['data']['version'])): echo $needs_update ? '<span style="color:green;font-weight:bold">IGEN – WP frissítésértesítő aktív</span>' : '<span style="color:#888">Nem – verziók egyenlők vagy GitHub régebbi</span>'; else: echo '<span style="color:orange">Cache üres – nyomj Force check-et</span>'; endif; ?></td>
+                    </tr>
                 </tbody>
             </table>
 
             <h2 style="margin-top:24px;">Karbantartás</h2>
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin: 10px 0 8px; display:flex; gap:8px; flex-wrap:wrap;">
+                <input type="hidden" name="action" value="photowooshop_force_update_check">
+                <?php wp_nonce_field('photowooshop_force_update_check', 'photowooshop_force_update_check_nonce'); ?>
+                <button type="submit" class="button button-primary">Force update check (GitHub cache törlés)</button>
+            </form>
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin: 10px 0 8px; display:flex; gap:8px; flex-wrap:wrap;">
                 <input type="hidden" name="action" value="photowooshop_rebuild_index">
                 <?php wp_nonce_field('photowooshop_rebuild_index', 'photowooshop_rebuild_index_nonce'); ?>
@@ -1526,6 +1560,27 @@ class Photowooshop
         $redirect_url = add_query_arg(array(
             'page' => 'photowooshop',
             'photowooshop_smoke_ran' => '1',
+        ), admin_url('admin.php'));
+        wp_safe_redirect($redirect_url);
+        exit;
+    }
+
+    public function handle_force_update_check()
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die('Access denied');
+        }
+        if (!isset($_POST['photowooshop_force_update_check_nonce']) || !wp_verify_nonce($_POST['photowooshop_force_update_check_nonce'], 'photowooshop_force_update_check')) {
+            wp_die('Invalid request');
+        }
+
+        delete_option(self::UPDATE_CACHE_OPTION);
+        delete_site_transient('update_plugins');
+        $this->get_latest_github_release(true);
+
+        $redirect_url = add_query_arg(array(
+            'page' => 'photowooshop',
+            'photowooshop_update_check_ran' => '1',
         ), admin_url('admin.php'));
         wp_safe_redirect($redirect_url);
         exit;
