@@ -88,6 +88,19 @@ jQuery(document).ready(function ($) {
         return `${radii.tl}px ${radii.tr}px ${radii.br}px ${radii.bl}px`;
     }
 
+    function updateCornerMapPreview(row, radii) {
+        const preview = row.find('.image-corner-map-preview');
+        if (!preview.length) {
+            return;
+        }
+
+        preview.css('border-radius', `${radii.tl}px ${radii.tr}px ${radii.br}px ${radii.bl}px`);
+        preview.find('[data-corner="tl"]').text(`TL ${Math.round(radii.tl)}`);
+        preview.find('[data-corner="tr"]').text(`TR ${Math.round(radii.tr)}`);
+        preview.find('[data-corner="br"]').text(`BR ${Math.round(radii.br)}`);
+        preview.find('[data-corner="bl"]').text(`BL ${Math.round(radii.bl)}`);
+    }
+
     function ensureSlotDefaults() {
         slots.forEach((slot, index) => {
             if (typeof slot.z !== 'number') slot.z = 10;
@@ -251,6 +264,15 @@ jQuery(document).ready(function ($) {
                             <label>Bal alsó:</label><br>
                             <input type="number" data-field="radius_bl" value="${safeRadii.bl}" min="0" step="1" style="width:70px;"> px
                         </div>
+                        <div style="grid-column:1 / -1;">
+                            <div style="font-size:11px; color:#666; margin:4px 0 6px;">Sarok térkép (élő előnézet):</div>
+                            <div class="image-corner-map-preview" style="position:relative; width:130px; height:80px; border:2px dashed #999; background:linear-gradient(135deg, #f7f7f7, #ffffff); border-radius:${safeRadii.tl}px ${safeRadii.tr}px ${safeRadii.br}px ${safeRadii.bl}px;">
+                                <span data-corner="tl" style="position:absolute; left:6px; top:4px; font-size:10px; color:#333; background:rgba(255,255,255,0.8); padding:1px 4px; border-radius:10px;">TL ${safeRadii.tl}</span>
+                                <span data-corner="tr" style="position:absolute; right:6px; top:4px; font-size:10px; color:#333; background:rgba(255,255,255,0.8); padding:1px 4px; border-radius:10px;">TR ${safeRadii.tr}</span>
+                                <span data-corner="br" style="position:absolute; right:6px; bottom:4px; font-size:10px; color:#333; background:rgba(255,255,255,0.8); padding:1px 4px; border-radius:10px;">BR ${safeRadii.br}</span>
+                                <span data-corner="bl" style="position:absolute; left:6px; bottom:4px; font-size:10px; color:#333; background:rgba(255,255,255,0.8); padding:1px 4px; border-radius:10px;">BL ${safeRadii.bl}</span>
+                            </div>
+                        </div>
                         <div>
                             <label>Réteg (z-index):</label><br>
                             <input type="number" data-field="z" value="${Number.isNaN(safeZ) ? 10 : safeZ}" step="1" style="width:70px;">
@@ -286,6 +308,7 @@ jQuery(document).ready(function ($) {
             row.find('input[data-field="radius_tr"]').val(val);
             row.find('input[data-field="radius_br"]').val(val);
             row.find('input[data-field="radius_bl"]').val(val);
+            updateCornerMapPreview(row, slots[idx].radii);
             $(this).val(val);
         }
 
@@ -299,9 +322,9 @@ jQuery(document).ready(function ($) {
             workspace.find(`.tpl-slot[data-index="${idx}"]`).css('border-radius', getImageSlotBorderRadiusCss(slots[idx], 10));
 
             const unified = getUnifiedRadiusValue(radii);
-            imageSettingsContainer
-                .find(`.image-slot-setting[data-index="${idx}"] input[data-field="radius"]`)
-                .val(unified);
+            const row = imageSettingsContainer.find(`.image-slot-setting[data-index="${idx}"]`);
+            row.find('input[data-field="radius"]').val(unified);
+            updateCornerMapPreview(row, radii);
             $(this).val(val);
         }
 
