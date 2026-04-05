@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/gaborknippl/photowooshop
  * Update URI:  https://github.com/gaborknippl/photowooshop
  * Description: Teljesen egyedi, 6 fotós montázs készítő WooCommerce termékekhez.
- * Version:     1.1.33
+ * Version:     1.1.34
  * Author:      Flodesign
  * Author URI:  https://www.flodesign.hu
  * Text Domain: photowooshop
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class Photowooshop
 {
     private static $instance = null;
-    const PLUGIN_VERSION = '1.1.33';
+    const PLUGIN_VERSION = '1.1.34';
     const VERSION_OPTION = 'photowooshop_plugin_version';
     const UPLOAD_SUBDIR = 'photowooshop';
     const IMAGE_UPLOAD_MAX_BYTES = 12582912; // 12 MB
@@ -34,7 +34,7 @@ class Photowooshop
     const UPDATE_CACHE_OPTION = 'photowooshop_github_update_cache';
     const GITHUB_REPOSITORY = 'gaborknippl/photowooshop';
     const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/gaborknippl/photowooshop/releases/latest';
-    const GITHUB_TAGS_API = 'https://api.github.com/repos/gaborknippl/photowooshop/tags?per_page=1';
+    const GITHUB_TAGS_API = 'https://api.github.com/repos/gaborknippl/photowooshop/tags?per_page=50';
 
     public static function get_instance()
     {
@@ -202,8 +202,22 @@ class Photowooshop
 
             if (!is_wp_error($tags_response) && (int) wp_remote_retrieve_response_code($tags_response) === 200) {
                 $tags_payload = json_decode(wp_remote_retrieve_body($tags_response), true);
-                if (is_array($tags_payload) && !empty($tags_payload[0]['name'])) {
-                    $tag = (string) $tags_payload[0]['name'];
+                $tag = '';
+
+                if (is_array($tags_payload)) {
+                    foreach ($tags_payload as $tag_row) {
+                        if (!is_array($tag_row) || empty($tag_row['name'])) {
+                            continue;
+                        }
+                        $candidate_tag = (string) $tag_row['name'];
+                        $candidate_version = ltrim($candidate_tag, 'vV');
+                        if ($tag === '' || version_compare($candidate_version, ltrim($tag, 'vV'), '>')) {
+                            $tag = $candidate_tag;
+                        }
+                    }
+                }
+
+                if ($tag !== '') {
                     $release_data = array(
                         'version' => ltrim($tag, 'vV'),
                         'tag' => $tag,
@@ -211,7 +225,7 @@ class Photowooshop
                         'html_url' => 'https://github.com/' . self::GITHUB_REPOSITORY . '/releases/tag/' . rawurlencode($tag),
                         'published_at' => '',
                         'body' => '',
-                        'source' => 'tag',
+                        'source' => 'tag-semver',
                     );
                 }
             }
