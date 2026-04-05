@@ -17,7 +17,7 @@ To make WordPress updates work reliably:
 
 1. Keep `Version` in `photowooshop.php` in sync with your release tag.
 2. Create GitHub releases with semantic tags, for example:
-   - `v1.1.28`
+   - `v1.1.29`
    - `v1.2.0`
 3. Ensure each release has generated source zip (GitHub does this automatically).
 4. Recommended: always publish a Release object, but tags alone still work as fallback.
@@ -26,7 +26,7 @@ To make WordPress updates work reliably:
 
 1. Update plugin version in `photowooshop.php`.
 2. Commit and push to `main`.
-3. Create a new GitHub Release with matching tag (for example `v1.1.28`).
+3. Create a new GitHub Release with matching tag (for example `v1.1.29`).
 4. In WordPress admin, go to Dashboard -> Updates and check for updates.
 
 ## Local git quick start
