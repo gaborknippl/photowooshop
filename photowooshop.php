@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/gaborknippl/photowooshop
  * Update URI:  https://github.com/gaborknippl/photowooshop
  * Description: Teljesen egyedi, 6 fotós montázs készítő WooCommerce termékekhez.
- * Version:     1.1.31
+ * Version:     1.1.32
  * Author:      Flodesign
  * Author URI:  https://www.flodesign.hu
  * Text Domain: photowooshop
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class Photowooshop
 {
     private static $instance = null;
-    const PLUGIN_VERSION = '1.1.31';
+    const PLUGIN_VERSION = '1.1.32';
     const VERSION_OPTION = 'photowooshop_plugin_version';
     const UPLOAD_SUBDIR = 'photowooshop';
     const IMAGE_UPLOAD_MAX_BYTES = 12582912; // 12 MB
@@ -56,6 +56,7 @@ class Photowooshop
         add_action('admin_post_photowooshop_run_smoke_test', array($this, 'handle_run_smoke_test'));
         add_action('admin_post_photowooshop_force_update_check', array($this, 'handle_force_update_check'));
         add_filter('pre_set_site_transient_update_plugins', array($this, 'inject_github_plugin_update'));
+        add_filter('site_transient_update_plugins', array($this, 'inject_github_plugin_update'));
         add_filter('plugins_api', array($this, 'filter_github_plugin_information'), 20, 3);
         add_filter('upgrader_source_selection', array($this, 'fix_github_upgrader_source_dir'), 10, 4);
 
@@ -230,18 +231,31 @@ class Photowooshop
 
     public function inject_github_plugin_update($transient)
     {
-        if (empty($transient) || !is_object($transient) || empty($transient->checked)) {
-            return $transient;
+        if (empty($transient) || !is_object($transient)) {
+            $transient = new stdClass();
+        }
+
+        if (!isset($transient->response) || !is_array($transient->response)) {
+            $transient->response = array();
+        }
+        if (!isset($transient->no_update) || !is_array($transient->no_update)) {
+            $transient->no_update = array();
+        }
+        if (!isset($transient->checked) || !is_array($transient->checked)) {
+            $transient->checked = array();
         }
 
         $plugin_file = plugin_basename(__FILE__);
+        $installed_version = isset($transient->checked[$plugin_file])
+            ? (string) $transient->checked[$plugin_file]
+            : self::PLUGIN_VERSION;
         $release = $this->get_latest_github_release();
 
         if (empty($release) || empty($release['version'])) {
             return $transient;
         }
 
-        if (version_compare(self::PLUGIN_VERSION, (string) $release['version'], '<')) {
+        if (version_compare($installed_version, (string) $release['version'], '<')) {
             $package_url = !empty($release['zipball_url'])
                 ? $release['zipball_url']
                 : ('https://github.com/' . self::GITHUB_REPOSITORY . '/archive/refs/tags/' . rawurlencode((string) $release['tag']) . '.zip');
@@ -253,8 +267,17 @@ class Photowooshop
                 'url' => (string) $release['html_url'],
                 'package' => $package_url,
             );
+            if (isset($transient->no_update[$plugin_file])) {
+                unset($transient->no_update[$plugin_file]);
+            }
         } elseif (!empty($transient->response[$plugin_file])) {
             unset($transient->response[$plugin_file]);
+            $transient->no_update[$plugin_file] = (object) array(
+                'slug' => dirname($plugin_file),
+                'plugin' => $plugin_file,
+                'new_version' => $installed_version,
+                'url' => (string) $release['html_url'],
+            );
         }
 
         return $transient;
