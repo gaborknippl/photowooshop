@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/gaborknippl/photowooshop
  * Update URI:  https://github.com/gaborknippl/photowooshop
  * Description: Teljesen egyedi, 6 fotós montázs készítő WooCommerce termékekhez.
- * Version:     1.1.40
+ * Version:     1.1.41
  * Author:      Flodesign
  * Author URI:  https://www.flodesign.hu
  * Text Domain: photowooshop
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class Photowooshop
 {
     private static $instance = null;
-    const PLUGIN_VERSION = '1.1.40';
+    const PLUGIN_VERSION = '1.1.41';
     const VERSION_OPTION = 'photowooshop_plugin_version';
     const UPLOAD_SUBDIR = 'photowooshop';
     const IMAGE_UPLOAD_MAX_BYTES = 12582912; // 12 MB
@@ -1225,15 +1225,15 @@ class Photowooshop
             <?php if ($update_check_ran): ?>
                 <?php if ($update_check_status === 'api_error'): ?>
                     <div class="notice notice-error is-dismissible">
-                        <p><strong>GitHub API hiba!</strong> Nem sikerült elérni a GitHub-ot. Ellenőrizd az internet-kapcsolatot, vagy a GitHub API rate limitet. (Cache törölve, de új adat nem töltődött be.)</p>
+                        <p><strong>Frissítési API hiba!</strong> Nem sikerült elérni a frissítési kiszolgálót. Ellenőrizd az internet-kapcsolatot vagy a hozzáférési adatokat. (Cache törölve, de új adat nem töltődött be.)</p>
                     </div>
                 <?php else: ?>
                     <?php $uc_needs_update = $update_check_version && version_compare(self::PLUGIN_VERSION, $update_check_version, '<'); ?>
                     <div class="notice <?php echo $uc_needs_update ? 'notice-warning' : 'notice-success'; ?> is-dismissible">
                         <p>
-                            <strong>GitHub frissítés-ellenőrzés kész.</strong>
+                            <strong>Frissítés-ellenőrzés kész.</strong>
                             Telepített verzió: <strong><?php echo esc_html(self::PLUGIN_VERSION); ?></strong> |
-                            GitHub legújabb: <strong><?php echo esc_html($update_check_version); ?></strong>
+                            Legújabb elérhető: <strong><?php echo esc_html($update_check_version); ?></strong>
                             (forrás: <?php echo esc_html($update_check_source); ?>)<br>
                             <?php if ($uc_needs_update): ?>
                                 <span style="color:#d63638; font-weight:bold;">&#x26A0; Frissítés érhető el! Menj: Irányítópult → Frissítések</span>
@@ -1307,10 +1307,10 @@ class Photowooshop
                         </td>
                     </tr>
                     <tr>
-                        <th scope="row">GitHub token (frissítéshez)</th>
+                        <th scope="row">Frissítési token</th>
                         <td>
                             <input type="password" name="photowooshop_github_token" value="<?php echo esc_attr($github_token); ?>" class="regular-text" autocomplete="off">
-                            <p class="description">Adj meg egy GitHub Personal Access Tokent legalább repository olvasási jogosultsággal. Ez megoldja az API limit és csomag letöltési hibákat.</p>
+                            <p class="description">Adj meg egy hozzáférési tokent legalább olvasási jogosultsággal. Ez megoldja az API limit és csomag letöltési hibákat.</p>
                         </td>
                     </tr>
                 </table>
@@ -1411,7 +1411,7 @@ class Photowooshop
                         <td><?php echo esc_html(self::PLUGIN_VERSION); ?> <small style="color:#888">(telepített)</small></td>
                     </tr>
                     <tr>
-                        <td><strong>GitHub token</strong></td>
+                        <td><strong>Frissítési token</strong></td>
                         <td><?php echo $this->get_github_token() !== '' ? '<span style="color:#2e7d32;">Beállítva</span>' : '<span style="color:#b45309;">Nincs beállítva</span>'; ?></td>
                     </tr>
                     <tr>
@@ -1432,23 +1432,23 @@ class Photowooshop
                     </tr>
                     <?php
                     $uc = is_array($cached_update_data) ? $cached_update_data : array();
-                    $github_version = !empty($uc['data']['version']) ? esc_html($uc['data']['version']) : 'N/A (cache üres)';
-                    $github_source  = !empty($uc['data']['source'])  ? esc_html($uc['data']['source'])  : '-';
-                    $github_checked = !empty($uc['checked_at']) ? esc_html(date('Y-m-d H:i:s', (int)$uc['checked_at'])) : 'Még nem ellenőrzött';
-                    $github_age_min = !empty($uc['checked_at']) ? round((time() - (int)$uc['checked_at']) / 60) : null;
+                    $latest_version = !empty($uc['data']['version']) ? esc_html($uc['data']['version']) : 'N/A (cache üres)';
+                    $update_source  = !empty($uc['data']['source'])  ? esc_html($uc['data']['source'])  : '-';
+                    $update_checked = !empty($uc['checked_at']) ? esc_html(date('Y-m-d H:i:s', (int)$uc['checked_at'])) : 'Még nem ellenőrzött';
+                    $update_age_min = !empty($uc['checked_at']) ? round((time() - (int)$uc['checked_at']) / 60) : null;
                     $needs_update   = !empty($uc['data']['version']) && version_compare(self::PLUGIN_VERSION, $uc['data']['version'], '<');
                     ?>
                     <tr>
-                        <td><strong>GitHub legújabb verzió</strong></td>
-                        <td><?php echo $github_version; ?> <small style="color:#888">(forrás: <?php echo $github_source; ?>)</small></td>
+                        <td><strong>Legújabb elérhető verzió</strong></td>
+                        <td><?php echo $latest_version; ?> <small style="color:#888">(forrás: <?php echo $update_source; ?>)</small></td>
                     </tr>
                     <tr>
-                        <td><strong>GitHub API lekérve</strong></td>
-                        <td><?php echo $github_checked; ?><?php if ($github_age_min !== null): ?> <small style="color:#888">(<?php echo esc_html((string)$github_age_min); ?> perce)</small><?php endif; ?></td>
+                        <td><strong>Frissítési API lekérve</strong></td>
+                        <td><?php echo $update_checked; ?><?php if ($update_age_min !== null): ?> <small style="color:#888">(<?php echo esc_html((string)$update_age_min); ?> perce)</small><?php endif; ?></td>
                     </tr>
                     <tr>
                         <td><strong>Frissítés szükséges?</strong></td>
-                        <td><?php if (!empty($uc['data']['version'])): echo $needs_update ? '<span style="color:green;font-weight:bold">IGEN – WP frissítésértesítő aktív</span>' : '<span style="color:#888">Nem – verziók egyenlők vagy GitHub régebbi</span>'; else: echo '<span style="color:orange">Cache üres – nyomj Force check-et</span>'; endif; ?></td>
+                        <td><?php if (!empty($uc['data']['version'])): echo $needs_update ? '<span style="color:green;font-weight:bold">IGEN – WP frissítésértesítő aktív</span>' : '<span style="color:#888">Nem – verziók egyenlők vagy a távoli verzió régebbi</span>'; else: echo '<span style="color:orange">Cache üres – nyomj Force check-et</span>'; endif; ?></td>
                     </tr>
                 </tbody>
             </table>
@@ -1457,7 +1457,7 @@ class Photowooshop
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin: 10px 0 8px; display:flex; gap:8px; flex-wrap:wrap;">
                 <input type="hidden" name="action" value="photowooshop_force_update_check">
                 <?php wp_nonce_field('photowooshop_force_update_check', 'photowooshop_force_update_check_nonce'); ?>
-                <button type="submit" class="button button-primary">Force update check (GitHub cache törlés)</button>
+                <button type="submit" class="button button-primary">Force update check (frissítési cache törlés)</button>
             </form>
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin: 10px 0 8px; display:flex; gap:8px; flex-wrap:wrap;">
                 <input type="hidden" name="action" value="photowooshop_rebuild_index">
@@ -1555,8 +1555,8 @@ class Photowooshop
 
             <h2>7. Frissítés és visszaállítás</h2>
             <ul style="max-width:900px; list-style:disc; padding-left:20px;">
-                <li>A plugin GitHub verziókövetést használ.</li>
-                <li>WordPress frissítés ellenőrzés elsődlegesen Release, másodlagosan Tag alapján működik.</li>
+                <li>A plugin külső verziókövetést használ.</li>
+                <li>WordPress frissítés ellenőrzés elsődlegesen kiadás, másodlagosan verziócímke alapján működik.</li>
                 <li>A részletes változáslista a <strong>Photowooshop -> Verziókövetés</strong> oldalon érhető el.</li>
                 <li>Rollback esetén célszeru stabil tagre visszaállni.</li>
             </ul>
@@ -1581,7 +1581,7 @@ class Photowooshop
             <h1>Photowooshop Verziókövetés</h1>
             <p style="max-width:900px;">Gyors changelog kivonat a stabilitási és admin fejlesztésekről.</p>
 
-            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.40)</h2>
+            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.41)</h2>
             <table class="widefat striped" style="max-width: 760px;">
                 <tbody>
                     <tr><td><strong>1.1.17</strong></td><td>Anyaglista teljesítmény hotfix (500 hiba csökkentése).</td></tr>
@@ -1595,7 +1595,7 @@ class Photowooshop
                     <tr><td><strong>1.1.25</strong></td><td>Kritikus syntax javitas, stabilitasi korrekcio.</td></tr>
                     <tr><td><strong>1.1.26</strong></td><td>Rétegpanel és admin szerkesztő UX finomítások.</td></tr>
                     <tr><td><strong>1.1.27</strong></td><td>Rétegbeállítások stabilitási és mentési javítások.</td></tr>
-                    <tr><td><strong>1.1.28</strong></td><td>GitHub tag alapú frissítési folyamat bevezetése.</td></tr>
+                    <tr><td><strong>1.1.28</strong></td><td>Tag alapú frissítési folyamat bevezetése.</td></tr>
                     <tr><td><strong>1.1.29</strong></td><td>Frissítési ellenőrzés és release folyamat finomítás.</td></tr>
                     <tr><td><strong>1.1.30</strong></td><td>Súgó oldal és shape sarokkezelés fejlesztések.</td></tr>
                     <tr><td><strong>1.1.31</strong></td><td>Frissítés-ellenőrzés kézi trigger és diagnosztikai bővítés.</td></tr>
@@ -1605,9 +1605,10 @@ class Photowooshop
                     <tr><td><strong>1.1.35</strong></td><td>Frissítési folyamat ellenőrző kiadás (stabilitási teszt).</td></tr>
                     <tr><td><strong>1.1.36</strong></td><td>Csomag letöltési URL átváltás codeload végpontra.</td></tr>
                     <tr><td><strong>1.1.37</strong></td><td>Rétegpanel: új kuka ikonos törlés gomb minden rétegtípushoz.</td></tr>
-                    <tr><td><strong>1.1.38</strong></td><td>GitHub update csomag: tokenes hitelesített letöltés támogatás (privát repo kompatibilitás).</td></tr>
+                    <tr><td><strong>1.1.38</strong></td><td>Frissítési csomag: tokenes hitelesített letöltés támogatás.</td></tr>
                     <tr><td><strong>1.1.39</strong></td><td>Frissítési folyamat ellenőrző kiadás a telepíthetőség validálására.</td></tr>
-                    <tr><td><strong>1.1.40</strong></td><td>GitHub token beállítás közvetlenül a Beállítások oldalon + tokenes API hívások minden update ellenőrzéshez.</td></tr>
+                    <tr><td><strong>1.1.40</strong></td><td>Frissítési token beállítás közvetlenül a Beállítások oldalon + tokenes API hívások minden ellenőrzéshez.</td></tr>
+                    <tr><td><strong>1.1.41</strong></td><td>Felhasználói felületen és dokumentációban a technikai háttérmegnevezések elrejtése.</td></tr>
                 </tbody>
             </table>
         </div>
