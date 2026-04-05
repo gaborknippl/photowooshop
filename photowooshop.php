@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/gaborknippl/photowooshop
  * Update URI:  https://github.com/gaborknippl/photowooshop
  * Description: Teljesen egyedi, 6 fotós montázs készítő WooCommerce termékekhez.
- * Version:     1.1.36
+ * Version:     1.1.37
  * Author:      Flodesign
  * Author URI:  https://www.flodesign.hu
  * Text Domain: photowooshop
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class Photowooshop
 {
     private static $instance = null;
-    const PLUGIN_VERSION = '1.1.36';
+    const PLUGIN_VERSION = '1.1.37';
     const VERSION_OPTION = 'photowooshop_plugin_version';
     const UPLOAD_SUBDIR = 'photowooshop';
     const IMAGE_UPLOAD_MAX_BYTES = 12582912; // 12 MB
@@ -1503,7 +1503,7 @@ class Photowooshop
             <h1>Photowooshop Verziókövetés</h1>
             <p style="max-width:900px;">Gyors changelog kivonat a stabilitási és admin fejlesztésekről.</p>
 
-            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.25)</h2>
+            <h2 style="margin-top:24px;">Gyors Changelog (1.1.17 - 1.1.37)</h2>
             <table class="widefat striped" style="max-width: 760px;">
                 <tbody>
                     <tr><td><strong>1.1.17</strong></td><td>Anyaglista teljesítmény hotfix (500 hiba csökkentése).</td></tr>
@@ -1515,6 +1515,18 @@ class Photowooshop
                     <tr><td><strong>1.1.23</strong></td><td>Fajlnev fallback kereses migralt allomanyokra.</td></tr>
                     <tr><td><strong>1.1.24</strong></td><td>Modal ures-allapot uzenet es anyagmeta szures javitas.</td></tr>
                     <tr><td><strong>1.1.25</strong></td><td>Kritikus syntax javitas, stabilitasi korrekcio.</td></tr>
+                    <tr><td><strong>1.1.26</strong></td><td>Rétegpanel és admin szerkesztő UX finomítások.</td></tr>
+                    <tr><td><strong>1.1.27</strong></td><td>Rétegbeállítások stabilitási és mentési javítások.</td></tr>
+                    <tr><td><strong>1.1.28</strong></td><td>GitHub tag alapú frissítési folyamat bevezetése.</td></tr>
+                    <tr><td><strong>1.1.29</strong></td><td>Frissítési ellenőrzés és release folyamat finomítás.</td></tr>
+                    <tr><td><strong>1.1.30</strong></td><td>Súgó oldal és shape sarokkezelés fejlesztések.</td></tr>
+                    <tr><td><strong>1.1.31</strong></td><td>Frissítés-ellenőrzés kézi trigger és diagnosztikai bővítés.</td></tr>
+                    <tr><td><strong>1.1.32</strong></td><td>WordPress update transient injektálás megerősítése.</td></tr>
+                    <tr><td><strong>1.1.33</strong></td><td>Gyors changelog külön Verziókövetés menübe áthelyezve.</td></tr>
+                    <tr><td><strong>1.1.34</strong></td><td>Legmagasabb szemantikus tag kiválasztás a fallback ágon.</td></tr>
+                    <tr><td><strong>1.1.35</strong></td><td>Frissítési folyamat ellenőrző kiadás (stabilitási teszt).</td></tr>
+                    <tr><td><strong>1.1.36</strong></td><td>Csomag letöltési URL átváltás codeload végpontra.</td></tr>
+                    <tr><td><strong>1.1.37</strong></td><td>Rétegpanel: új kuka ikonos törlés gomb minden rétegtípushoz.</td></tr>
                 </tbody>
             </table>
         </div>

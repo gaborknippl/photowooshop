@@ -314,6 +314,31 @@ jQuery(document).ready(function ($) {
         return slot ? renderShapeLayerFields(slot, item.index) : '';
     }
 
+    function deleteLayerItem(type, index) {
+        if (type === 'image' && slots[index]) {
+            slots.splice(index, 1);
+            save();
+            renderSlots();
+            renderLayerManager();
+            return;
+        }
+
+        if (type === 'text' && textSlots[index]) {
+            textSlots.splice(index, 1);
+            saveTextSlots();
+            renderTextSlots();
+            renderLayerManager();
+            return;
+        }
+
+        if (type === 'shape' && shapeSlots[index]) {
+            shapeSlots.splice(index, 1);
+            saveShapeSlots();
+            renderShapeSlots();
+            renderLayerManager();
+        }
+    }
+
     function applyLayerOrderFromList() {
         const orderedKeys = [];
         layerListContainer.find('.layer-item').each(function () {
@@ -367,6 +392,18 @@ jQuery(document).ready(function ($) {
                     </div>
                     <div class="layer-item-body" style="display:${opened ? 'block' : 'none'}; margin-top:10px; padding-top:10px; border-top:1px solid #ececec; width:100%;">
                         ${renderLayerDetails(item)}
+                        <div style="display:flex; justify-content:flex-end; margin-top:10px; padding-top:10px; border-top:1px dashed #ececec;">
+                            <button
+                                type="button"
+                                class="layer-delete-btn"
+                                data-type="${item.type}"
+                                data-index="${item.index}"
+                                title="Reteg torlese"
+                                aria-label="Reteg torlese"
+                                style="width:34px; height:34px; border:1px solid #e4b9b9; background:#fff7f7; color:#b42318; border-radius:8px; font-size:16px; line-height:1; cursor:pointer;">
+                                &#128465;
+                            </button>
+                        </div>
                     </div>
                 </div>
             `);
@@ -394,6 +431,23 @@ jQuery(document).ready(function ($) {
         const key = item.data('key');
         expandedLayerKey = expandedLayerKey === key ? null : key;
         renderLayerManager();
+    });
+
+    layerListContainer.on('click', '.layer-delete-btn', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const type = String($(this).data('type') || '');
+        const index = parseInt($(this).data('index'), 10);
+        if (!Number.isInteger(index)) {
+            return;
+        }
+
+        if (!window.confirm('Biztosan torolni szeretned ezt a reteget?')) {
+            return;
+        }
+
+        deleteLayerItem(type, index);
     });
 
     layerListContainer.on('input change', '.layer-field', function () {
